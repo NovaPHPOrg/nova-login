@@ -189,13 +189,10 @@
         <form action="#" method="post" id="form">
             <mdui-text-field icon="mail" name="email" label="邮箱" class="mb-3" required></mdui-text-field>
             <mdui-text-field icon="lock" name="password" label="密码" toggle-password  type="password" class="mb-3" required></mdui-text-field>
-            <div id="captchaContainer" style="display: none;" class="mb-3">
-                <nova-captcha></nova-captcha>
-            </div>
             <mdui-button form="form" type="submit">登录</mdui-button>
         </form>
     </mdui-card>
-
+    <nova-captcha></nova-captcha>
     <div class="copyright text-center mt-2">
         <p>© <script>document.write(new Date().getFullYear())</script> <a href="https://ankio.net">Ankio</a>. All rights reserved.</p>
     </div>
@@ -224,6 +221,7 @@
 <script src="/static/framework/utils/Request.js?v={$__v}"></script>
 <script src="/static/components/theme/ThemeSwitcher.js?v={$__v}"></script>
 <script src="/static/components/language/Language.js?v={$__v}"></script>
+<script src="/static/components/captcha/Captcha.js?v={$__v}"></script>
 <script>
     window._v = "{$__v}"
     let level = debug ? 'debug' : 'error';
@@ -248,19 +246,16 @@
     });
 </script>
 <script>
-    function showCaptcha() {
-        document.getElementById('captchaContainer').style.display = 'block';
-    }
+    let needCaptcha = false;
 
     // 页面加载时检查是否需要显示验证码
     $.request.get("/login/need_captcha", function(response) {
         if (response.code === 200 && response.data === true) {
-            showCaptcha();
+            needCaptcha = true;
         }
     });
 
     $("#form").on("submit", function (e) {
-        let loading = new Loading(document.querySelector("#form"));
         e.preventDefault();
         let data = $(this).serializeObject();
         
@@ -274,37 +269,50 @@
             return false;
         }
 
-        // 如果验证码输入框显示，则验证验证码是否填写
-        if (document.getElementById('captchaContainer').style.display !== 'none') {
-            const captchaComponent = document.querySelector('nova-captcha');
-            if (!captchaComponent.validate()) {
-                $.toaster.error('请输入正确的验证码');
-                return false;
+        const submitForm = (captchaData = null) => {
+            if (captchaData) {
+                data.captcha = captchaData.captcha;
+                data.captcha_state = captchaData.state;
             }
-            data.captcha = captchaComponent.getValue();
-        }
 
-        loading.show();
-        $.request.postForm("/login/pwd", data, function (response) {
-            if (response.code === 200) {
-                $.toaster.success(response.msg);
-                setTimeout(function () {
-                    location.href = response.data;
-                }, 500);
-            } else {
-                $.toaster.error(response.msg);
-                // 根据后端返回决定是否显示验证码
-                if (response.need_captcha) {
-                    showCaptcha();
+            let loading = new Loading(document.querySelector("#form"));
+            loading.show();
+            
+            $.request.postForm("/login/pwd", data, function (response) {
+                if (response.code === 200) {
+                    $.toaster.success(response.msg);
+                    setTimeout(function () {
+                        location.href = response.data;
+                    }, 500);
+                } else {
+                    $.toaster.error(response.msg);
+                    // 根据后端返回决定是否显示验证码
+                    if (response.need_captcha) {
+                        needCaptcha = true;
+                        showCaptcha(submitForm);
+                    }
+                    loading.close();
                 }
+            }, function () {
                 loading.close();
-            }
-        }, function () {
-            loading.close();
-        });
+            });
+        };
+
+        if (needCaptcha) {
+            showCaptcha(submitForm);
+        } else {
+            submitForm();
+        }
+        
         return false;
     });
 
+    function showCaptcha(submitForm) {
+        let captcha = document.querySelector("nova-captcha");
+        captcha.show(function (data) {
+            submitForm(data.captcha)
+        })
+    }
 
     function fetchHitokoto() {
         fetch('https://international.v1.hitokoto.cn')
@@ -335,10 +343,6 @@
 
     // Initial fetch
     fetchHitokoto();
-
-
-
-
 </script>
 </body>
 </html>

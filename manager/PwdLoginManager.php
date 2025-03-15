@@ -156,11 +156,10 @@ class PwdLoginManager extends BaseLoginManager
             LogDao::getInstance()->logAction($user->id, "登录成功");
             return $user;
         } else {
+            $this->recordFailedAttempt($ip);
+            Logger::warning("IP $ip 登录失败", $credentials);
             // Login failed, record the attempt if not in debug mode
-            if (!Context::instance()->isDebug()) {
-                $this->recordFailedAttempt($ip);
-                Logger::warning("IP $ip 登录失败", $credentials);
-            }
+
             return false;
         }
     }
@@ -209,7 +208,7 @@ class PwdLoginManager extends BaseLoginManager
         $this->cache->set($attemptsKey, $attempts, 3600); // Store for 1 hour
 
         // Block IP after 3 failed attempts
-        if ($attempts >= 3) {
+        if ($attempts >= 3 && !Context::instance()->isDebug()) {
             $blockKey = "login:blocked:{$ip}";
             $blockCount = ceil($attempts / 3);
 
