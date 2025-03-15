@@ -190,10 +190,7 @@
             <mdui-text-field icon="mail" name="email" label="邮箱" class="mb-3" required></mdui-text-field>
             <mdui-text-field icon="lock" name="password" label="密码" toggle-password  type="password" class="mb-3" required></mdui-text-field>
             <div id="captchaContainer" style="display: none;" class="mb-3">
-                <div class="d-flex align-items-center gap-2">
-                    <mdui-text-field icon="security" name="captcha" label="验证码" required style="flex: 1;"></mdui-text-field>
-                    <img id="captchaImage" src="/login/captcha" alt="验证码" style="height: 40px; cursor: pointer;" onclick="refreshCaptcha()">
-                </div>
+                <nova-captcha></nova-captcha>
             </div>
             <mdui-button form="form" type="submit">登录</mdui-button>
         </form>
@@ -239,7 +236,8 @@
         'Toaster',
         'Request',
         'ThemeSwitcher',
-        'Language'
+        'Language',
+        'Captcha'
     ]);
     window.loading && window.loading.close();
     $.request.setBaseUrl(baseUri).setOnCode(401,()=>{
@@ -250,13 +248,8 @@
     });
 </script>
 <script>
-    function refreshCaptcha() {
-        document.getElementById('captchaImage').src = '/login/captcha?' + new Date().getTime();
-    }
-
     function showCaptcha() {
         document.getElementById('captchaContainer').style.display = 'block';
-        refreshCaptcha();
     }
 
     // 页面加载时检查是否需要显示验证码
@@ -282,9 +275,13 @@
         }
 
         // 如果验证码输入框显示，则验证验证码是否填写
-        if (document.getElementById('captchaContainer').style.display !== 'none' && (!data.captcha || !data.captcha.trim())) {
-            $.toaster.error('请输入验证码');
-            return false;
+        if (document.getElementById('captchaContainer').style.display !== 'none') {
+            const captchaComponent = document.querySelector('nova-captcha');
+            if (!captchaComponent.validate()) {
+                $.toaster.error('请输入正确的验证码');
+                return false;
+            }
+            data.captcha = captchaComponent.getValue();
         }
 
         loading.show();
