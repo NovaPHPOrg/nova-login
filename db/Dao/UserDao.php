@@ -1,12 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
 namespace nova\plugin\login\db\Dao;
 
+use nova\framework\core\Logger;
 use nova\plugin\login\avatar\Avatar;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\orm\object\Dao;
-use nova\framework\core\Logger;
 
 class UserDao extends Dao
 {
@@ -30,17 +31,16 @@ class UserDao extends Dao
         file_put_contents(ROOT_PATH . '/runtime/admin_password.txt', $info);
     }
 
-
-    public function login(string $email, string $password):?UserModel
+    public function login(string $email, string $password): ?UserModel
     {
         $user = $this->findByEmail($email);
-        if(empty($user) || !$user->authenticate($email, $password)) {
+        if (empty($user) || !$user->authenticate($email, $password)) {
             return null;
         }
         return $user;
     }
 
-    function findByEmail($email): ?UserModel
+    public function findByEmail($email): ?UserModel
     {
         return $this->find(null, ['email' => $email]);
     }

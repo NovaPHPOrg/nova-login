@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /*******************************************************************************
  * Copyright (c) 2022. Ankio. All Rights Reserved.
  ******************************************************************************/
@@ -15,7 +17,8 @@ namespace nova\plugin\login\device;
 
 class Version
 {
-    static function get($ua, $title) {
+    public static function get($ua, $title)
+    {
         // Grab the browser version if it's present
         preg_match('/' . $title . '[\ |\/|\:]?([.0-9a-zA-Z]+)/i', $ua, $regmatch);
         return (!isset($regmatch[1])) ? '' : $regmatch[1];

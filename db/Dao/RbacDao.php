@@ -1,11 +1,12 @@
 <?php
+
 declare(strict_types=1);
 
 namespace nova\plugin\login\db\Dao;
 
+use nova\plugin\login\db\Model\RbacModel;
 use nova\plugin\login\Permissions;
 use nova\plugin\orm\object\Dao;
-use nova\plugin\login\db\Model\RbacModel;
 
 class RbacDao extends Dao
 {
@@ -21,7 +22,7 @@ class RbacDao extends Dao
         $model->description = '系统管理员';
         $model->permissions = [Permissions::ALL];
         $this->insertModel($model);
-        
+
         // 可以添加更多默认角色
         $model = new RbacModel();
         $model->name = 'user';
@@ -30,8 +31,8 @@ class RbacDao extends Dao
         $this->insertModel($model);
     }
 
-    public function name($name):?RbacModel
+    public function name($name): ?RbacModel
     {
-        return $this->find(null,['name' => $name]);
+        return $this->find(null, ['name' => $name]);
     }
 }

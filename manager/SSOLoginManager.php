@@ -1,18 +1,19 @@
 <?php
+
 declare(strict_types=1);
 
 namespace nova\plugin\login\manager;
 
+use function nova\framework\config;
+
+use nova\framework\core\Context;
 use nova\framework\core\Logger;
 use nova\framework\event\EventManager;
-use nova\framework\core\Context;
-use nova\framework\http\Response;
 use nova\plugin\cookie\Session;
 use nova\plugin\http\HttpClient;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
 use Random\RandomException;
-use function nova\framework\config;
 
 class SSOLoginManager extends BaseLoginManager
 {
@@ -66,7 +67,7 @@ class SSOLoginManager extends BaseLoginManager
     /**
      * Authenticate a user with SSO token
      *
-     * @param array $credentials Should contain 'token' key
+     * @param  array          $credentials Should contain 'token' key
      * @return bool|UserModel Whether authentication was successful
      */
     public function authenticate(array $credentials): bool|UserModel
@@ -104,7 +105,7 @@ class SSOLoginManager extends BaseLoginManager
     /**
      * Get SSO login URL
      *
-     * @param string $redirectUrl URL to redirect after successful login
+     * @param  string $redirectUrl URL to redirect after successful login
      * @return string SSO login URL
      */
     public function getSSOLoginUrl(string $redirectUrl): string
@@ -120,20 +121,20 @@ class SSOLoginManager extends BaseLoginManager
 
         // Build the authorization URL
         return $this->ssoProviderUrl . '/authorize?' . http_build_query([
-                'client_id' => $this->clientId,
-                'redirect_uri' => $redirectUrl,
-                'response_type' => 'code',
-                'scope' => 'openid profile email',
-                'state' => $state,
-                'nonce' => $nonce
-            ]);
+            'client_id' => $this->clientId,
+            'redirect_uri' => $redirectUrl,
+            'response_type' => 'code',
+            'scope' => 'openid profile email',
+            'state' => $state,
+            'nonce' => $nonce
+        ]);
     }
 
     /**
      * Handle SSO callback
      *
-     * @param string $code Authorization code from SSO provider
-     * @param string $state State parameter for CSRF protection
+     * @param  string         $code  Authorization code from SSO provider
+     * @param  string         $state State parameter for CSRF protection
      * @return bool|UserModel Whether the callback was handled successfully
      */
     public function handleCallback(string $code, string $state): bool|UserModel
@@ -198,8 +199,8 @@ class SSOLoginManager extends BaseLoginManager
     /**
      * Exchange authorization code for tokens
      *
-     * @param string $code Authorization code
-     * @param string $redirectUrl Redirect URL used in the initial request
+     * @param  string      $code        Authorization code
+     * @param  string      $redirectUrl Redirect URL used in the initial request
      * @return array|false Tokens or false on failure
      */
     protected function exchangeCodeForTokens(string $code, string $redirectUrl): array|false
@@ -237,7 +238,7 @@ class SSOLoginManager extends BaseLoginManager
     /**
      * Get user info from access token
      *
-     * @param string $accessToken Access token
+     * @param  string      $accessToken Access token
      * @return array|false User info or false on failure
      */
     protected function getUserInfo(string $accessToken): array|false
@@ -270,7 +271,7 @@ class SSOLoginManager extends BaseLoginManager
     /**
      * Get user info from ID token
      *
-     * @param string $token ID token
+     * @param  string      $token ID token
      * @return array|false User info or false on failure
      */
     protected function getUserInfoFromToken(string $token): array|false
@@ -293,7 +294,7 @@ class SSOLoginManager extends BaseLoginManager
     /**
      * Find or create user based on SSO identity
      *
-     * @param array $userInfo User info from SSO provider
+     * @param  array           $userInfo User info from SSO provider
      * @return UserModel|false User model or false on failure
      * @throws RandomException
      */
@@ -341,9 +342,9 @@ class SSOLoginManager extends BaseLoginManager
     /**
      * Validate ID token
      *
-     * @param string $idToken ID token to validate
-     * @param string $nonce Expected nonce value
-     * @return bool Whether the token is valid
+     * @param  string $idToken ID token to validate
+     * @param  string $nonce   Expected nonce value
+     * @return bool   Whether the token is valid
      */
     protected function validateIdToken(string $idToken, string $nonce): bool
     {
@@ -390,8 +391,8 @@ class SSOLoginManager extends BaseLoginManager
     /**
      * Validate SSO token
      *
-     * @param string $token SSO token
-     * @return bool Whether the token is valid
+     * @param  string $token SSO token
+     * @return bool   Whether the token is valid
      */
     protected function validateSSOToken(string $token): bool
     {
@@ -428,9 +429,9 @@ class SSOLoginManager extends BaseLoginManager
             // If the SSO provider supports logout, redirect the user
             if ($idToken) {
                 $logoutUrl = $this->ssoProviderUrl . '/logout?' . http_build_query([
-                        'id_token_hint' => $idToken,
-                        'post_logout_redirect_uri' => Context::instance()->request()->getBasicAddress()
-                    ]);
+                    'id_token_hint' => $idToken,
+                    'post_logout_redirect_uri' => Context::instance()->request()->getBasicAddress()
+                ]);
 
                 // In a real implementation, you would redirect to this URL
                 // For now, we'll just return success
@@ -443,7 +444,7 @@ class SSOLoginManager extends BaseLoginManager
         }
     }
 
-    function redirectToProvider(): string
+    public function redirectToProvider(): string
     {
         $redirectUrl = Context::instance()->request()->getBasicAddress() . "/callback";
         return $this->getSSOLoginUrl($redirectUrl);

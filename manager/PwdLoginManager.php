@@ -1,15 +1,18 @@
 <?php
+
 declare(strict_types=1);
 
 namespace nova\plugin\login\manager;
 
-use app\db\Dao\LogDao;
 use nova\framework\cache\Cache;
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
 use nova\framework\event\EventManager;
 use nova\framework\exception\AppExitException;
 use nova\framework\http\Response;
+use nova\plugin\cookie\Session;
+use nova\plugin\login\captcha\CaptchaManager;
+use nova\plugin\login\db\Dao\LogDao;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\LoginManager;
@@ -18,39 +21,52 @@ use function nova\framework\config;
 
 class PwdLoginManager extends BaseLoginManager
 {
-
-
     public static function register(): void
     {
         EventManager::addListener("route.before", function ($event, &$uri) {
-            if (!str_starts_with("/login", $uri)) return;
-            $pwd = new PwdLoginManager();
-            if ($uri === "/login") {
 
+            if (!str_starts_with($uri, "/login")) {
+                return;
+            }
+            Session::getInstance()->start();
+            UserDao::getInstance()->initTable();
+            $redirect = config("login_callback") ?? "/";
+            $pwd = new PwdLoginManager();
+
+            if ($uri === "/login") {
+                if (LoginManager::getInstance()->checkLogin()) {
+                    throw new AppExitException(Response::asRedirect($redirect));
+                }
                 //渲染登录页面
                 $viewResponse = new ViewResponse();
                 $viewResponse->init(
-                    null,
+                    "",
                     [
-                        "name" => config('name') ?? "AnkioのLogin"
+                        "title" => config('name') ?? "AnkioのLogin"
                     ],
                     false,
-                    "{", "}",
+                    "{",
+                    "}",
                     ROOT_PATH . DS . "nova" . DS . "plugin" . DS . "login" . DS . "tpl" . DS
                 );
-                $viewResponse->asTpl("index");
-                throw new AppExitException($viewResponse, "Exit by Login");
+
+                throw new AppExitException($viewResponse->asTpl("index"), "Exit by Login");
             } elseif ($uri === "/login/pwd") {
                 //使用账号密码进行登录
                 $user = $pwd->authenticate($_POST);
                 if ($user === false) {
-                    throw new AppExitException(Response::asJson(['code' => 403, "msg" => "登录失败"]), "Exit by Login");
+                    throw new AppExitException(Response::asJson(['code' => 403, "msg" => "登录失败", "need_captcha" => $pwd->needCaptcha()]), "Exit by Login");
                 }
                 LoginManager::getInstance()->login($user);
-                throw new AppExitException(Response::asJson(['code' => 200, "msg" => "登录成功"]), "Exit by Login");
+                throw new AppExitException(Response::asJson(['code' => 200, "msg" => "登录成功", "data" => $redirect]), "Exit by Login");
+            } elseif ($uri === "/login/need_captcha") {
+                throw new AppExitException(Response::asJson(['code' => 200, "data" => $pwd->needCaptcha()]), "Exit by Login");
+            } elseif ($uri === "/login/captcha") {
+                $pwd->generateCaptcha();
+                exit();
             } elseif ($uri === "/login/reset") {
                 $user = LoginManager::getInstance()->checkLogin();
-                if ($pwd->reset($_POST, $user)) {
+                if ($user && $pwd->reset($_POST, $user)) {
                     LoginManager::getInstance()->logout($user->id);
                     throw new AppExitException(Response::asJson(['code' => 301, "msg" => "操作成功", "data" => "/login"]), "Exit by Login");
                 }
@@ -60,7 +76,7 @@ class PwdLoginManager extends BaseLoginManager
     }
 
     protected Cache $cache;
-
+    protected const CAPTCHA_THRESHOLD = 2; // 登录失败2次后需要验证码
 
     public function __construct()
     {
@@ -68,9 +84,41 @@ class PwdLoginManager extends BaseLoginManager
     }
 
     /**
+     * 生成验证码图片
+     */
+    protected function generateCaptcha(): void 
+    {
+        $captcha = new CaptchaManager();
+        $captcha->generate();
+    }
+
+    /**
+     * 验证验证码
+     */
+    protected function validateCaptcha(?string $code): bool 
+    {
+        if ($code === null) {
+            return false;
+        }
+        $captcha = new CaptchaManager();
+        return $captcha->validate($code);
+    }
+
+    /**
+     * 检查是否需要验证码
+     */
+    public function needCaptcha(): bool
+    {
+        $ip = Context::instance()->request()->getClientIP();
+        $attemptsKey = "login:attempts:{$ip}";
+        $attempts = (int)$this->cache->get($attemptsKey, 0);
+        return $attempts >= self::CAPTCHA_THRESHOLD;
+    }
+
+    /**
      * Authenticate a user with username and password
      *
-     * @param array $credentials Should contain 'username' and 'password' keys
+     * @param  array          $credentials Should contain 'username' and 'password' keys
      * @return bool|UserModel Whether authentication was successful
      */
     public function authenticate(array $credentials): bool|UserModel
@@ -79,27 +127,40 @@ class PwdLoginManager extends BaseLoginManager
         if (!isset($credentials['email']) || !isset($credentials['password'])) {
             return false;
         }
-
-        // Check if IP is blocked
         $ip = Context::instance()->request()->getClientIP();
-        $blockInfo = $this->checkIpBlocked($ip);
-        if ($blockInfo['blocked']) {
-            Logger::warning("IP $ip 因为多次尝试登录失败而被封禁", $credentials);
-            // IP is currently blocked
-            return false;
+        // Skip IP blocking in debug mode
+        if (!Context::instance()->isDebug()) {
+            // Check if IP is blocked
+            $blockInfo = $this->checkIpBlocked($ip);
+            if ($blockInfo['blocked']) {
+                Logger::warning("IP $ip 因为多次尝试登录失败而被封禁", $credentials);
+                return false;
+            }
+
+            // 检查是否需要验证码
+            if ($this->needCaptcha()) {
+                if (!isset($credentials['captcha']) || !$this->validateCaptcha($credentials['captcha'])) {
+                    Logger::warning("IP $ip 验证码验证失败", $credentials);
+                    return false;
+                }
+            }
         }
 
         $user = UserDao::getInstance()->login($credentials['email'], $credentials['password']);
 
         if ($user) {
-            // Login successful, reset failed attempts
-            $this->resetFailedAttempts($ip);
+            // Login successful, reset failed attempts if not in debug mode
+            if (!Context::instance()->isDebug()) {
+                $this->resetFailedAttempts($ip);
+            }
             LogDao::getInstance()->logAction($user->id, "登录成功");
             return $user;
         } else {
-            // Login failed, record the attempt
-            $this->recordFailedAttempt($ip);
-            Logger::warning("IP $ip 登录失败", $credentials);
+            // Login failed, record the attempt if not in debug mode
+            if (!Context::instance()->isDebug()) {
+                $this->recordFailedAttempt($ip);
+                Logger::warning("IP $ip 登录失败", $credentials);
+            }
             return false;
         }
     }
@@ -107,8 +168,8 @@ class PwdLoginManager extends BaseLoginManager
     /**
      * Check if an IP is currently blocked
      *
-     * @param string $ip The IP address to check
-     * @return array Block status and information
+     * @param  string $ip The IP address to check
+     * @return array  Block status and information
      */
     protected function checkIpBlocked(string $ip): array
     {
@@ -136,7 +197,7 @@ class PwdLoginManager extends BaseLoginManager
     /**
      * Record a failed login attempt
      *
-     * @param string $ip The IP address to record
+     * @param  string $ip The IP address to record
      * @return void
      */
     protected function recordFailedAttempt(string $ip): void
@@ -165,7 +226,7 @@ class PwdLoginManager extends BaseLoginManager
     /**
      * Reset failed attempts for an IP after successful login
      *
-     * @param string $ip The IP address to reset
+     * @param  string $ip The IP address to reset
      * @return void
      */
     protected function resetFailedAttempts(string $ip): void
@@ -182,8 +243,8 @@ class PwdLoginManager extends BaseLoginManager
     /**
      * Reset user password
      *
-     * @param array $data Should contain 'current_password' and 'new_password' keys
-     * @return bool Whether password reset was successful
+     * @param  array            $data Should contain 'current_password' and 'new_password' keys
+     * @return bool             Whether password reset was successful
      * @throws AppExitException
      */
     private function reset(array $data, UserModel $user): bool

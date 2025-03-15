@@ -1,70 +1,56 @@
 <?php
+
 declare(strict_types=1);
 
 namespace nova\plugin\login;
 
-use app\db\Dao\LogDao;
 use nova\framework\cache\Cache;
+
+use function nova\framework\config;
+
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
-use nova\framework\event\EventManager;
-use nova\framework\http\Response;
 use nova\plugin\cookie\Session;
+use nova\plugin\login\db\Dao\LogDao;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\device\UserAgent;
-use nova\plugin\login\manager\BaseLoginManager;
 use nova\plugin\login\manager\PwdLoginManager;
 use nova\plugin\login\manager\SSOLoginManager;
-use function nova\framework\config;
 
 class LoginManager
 {
     private int $loginCount = 0; //最多允许的登录数量
 
-
-    static function register(): void
+    public static function register(): void
     {
         SSOLoginManager::register();
         PwdLoginManager::register();
     }
 
-    protected BaseLoginManager $loginManager;
-
-    static function getInstance(): LoginManager
+    public static function getInstance(): LoginManager
     {
         return Context::instance()->getOrCreateInstance("loginManager", function () {
             return new LoginManager();
         });
     }
 
-    function redirectToProvider(): string
-    {
-        return $this->loginManager->redirectToProvider();
-    }
-
-    function __construct()
+    public function __construct()
     {
         $this->loginCount = config("login.count") ?? 1;
-        if (config('sso.enable') === true) {
-            //SSO端点注册
-            $this->loginManager = new SSOLoginManager();
-        } else {
-            $this->loginManager = new PwdLoginManager();
-        }
     }
 
     /**
      * 用户登录时调用，记录登录token
      * 如果登录数量超过限制，会将最早的登录踢下线
      *
-     * @param ?UserModel $user 登录id
-     * @return bool 登录是否成功
+     * @param  ?UserModel $user 登录id
+     * @return bool       登录是否成功
      */
     public function login(?UserModel $user): bool
     {
         try {
-            $token = sha1( random_bytes(32));
-            if (empty($user) ) {
+            $token = sha1(random_bytes(32));
+            if (empty($user)) {
                 return false;
             }
 
@@ -107,15 +93,13 @@ class LoginManager
         }
     }
 
-
-
     /**
      * 判断用户是否登录
      * 通过比对 Session 中的 token 和缓存中的 token 来防止多地登录
      *
      * @return bool 是否已登录
      */
-     function checkLogin(): bool|UserModel
+    public function checkLogin(): bool|UserModel
     {
         try {
             // Get token and user from session
@@ -180,9 +164,9 @@ class LoginManager
     /**
      * 用户登出
      *
-     * @param int|null $user_id 用户ID，如果为null则使用当前session中的用户
-     * @param string|null $token 登录token，如果为null且user_id不为null则退出所有会话，如果都为null则退出当前会话
-     * @return bool 登出是否成功
+     * @param  int|null    $user_id 用户ID，如果为null则使用当前session中的用户
+     * @param  string|null $token   登录token，如果为null且user_id不为null则退出所有会话，如果都为null则退出当前会话
+     * @return bool        登出是否成功
      */
     public function logout(?int $user_id = null, ?string $token = null): bool
     {
@@ -190,50 +174,50 @@ class LoginManager
             // 获取当前会话用户
             $currentUser = Session::getInstance()->get('user', null);
             $currentToken = Session::getInstance()->get('token', null);
-            
+
             // 情况1: userid和token都为null - 退出当前会话
             if ($user_id === null && $token === null) {
                 if (!is_object($currentUser) || empty($currentUser) || !is_string($currentToken) || empty($currentToken)) {
                     return false;
                 }
-                
+
                 $user_id = $currentUser->id;
                 $token = $currentToken;
-                
+
                 // 从缓存中移除当前token
                 $this->removeTokenFromCache($user_id, $token);
-                
+
                 // 销毁当前会话
                 Session::getInstance()->destroy();
                 return true;
             }
-            
+
             // 情况2: userid不为null但token为null - 退出所有会话
             if ($user_id !== null && $token === null) {
                 // 清除该用户的所有登录记录
                 $this->getCache()->delete("user_logins:$user_id");
-                
+
                 // 如果当前登录的用户就是要退出的用户，销毁当前会话
                 if (is_object($currentUser) && $currentUser->id === $user_id) {
                     Session::getInstance()->destroy();
                 }
-                
+
                 return true;
             }
-            
+
             // 情况3: userid不为null且token不为null - 退出指定token会话
             if ($user_id !== null && is_string($token) && !empty($token)) {
                 // 从缓存中移除指定token
                 $this->removeTokenFromCache($user_id, $token);
-                
+
                 // 如果当前会话的token与要退出的token相同，销毁当前会话
                 if (is_object($currentUser) && $currentUser->id === $user_id && $currentToken === $token) {
                     Session::getInstance()->destroy();
                 }
-                
+
                 return true;
             }
-            
+
             return false;
         } catch (\Exception $e) {
             Logger::error($e->getMessage(), $e->getTrace());
@@ -243,24 +227,24 @@ class LoginManager
 
     /**
      * 从缓存中移除指定用户的指定token
-     * 
-     * @param int $user_id 用户ID
-     * @param string $token 要移除的token
+     *
+     * @param  int    $user_id 用户ID
+     * @param  string $token   要移除的token
      * @return void
      */
     private function removeTokenFromCache(int $user_id, string $token): void
     {
         // 获取用户的登录记录
         $loginRecords = $this->getCache()->get("user_logins:$user_id", []);
-        
+
         // 移除指定token
         $loginRecords = array_filter($loginRecords, function ($record) use ($token) {
             return $record['token'] !== $token;
         });
-        
+
         // 重新索引数组
         $loginRecords = array_values($loginRecords);
-        
+
         // 更新登录记录
         $this->getCache()->set("user_logins:$user_id", $loginRecords);
     }

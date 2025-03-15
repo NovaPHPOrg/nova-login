@@ -1,24 +1,24 @@
 <?php
+
 declare(strict_types=1);
 
-namespace app\db\Model;
+namespace nova\plugin\login\db\Model;
 
 use nova\plugin\orm\object\Model;
-use nova\plugin\orm\object\SqlKey;
 
 class LogModel extends Model
 {
-    public int $user_id;
+    public int $user_id = 0;
     /**
      * @var string 操作类型
      */
     public string $action = '';
-    
+
     /**
      * @var string 操作描述
      */
     public string $description = '';
-    
+
     /**
      * @var string 操作IP地址
      */
@@ -37,7 +37,7 @@ class LogModel extends Model
      * @var string 操作相关的数据，JSON格式
      */
     public string $data = '{}';
-    
+
     /**
      * @var int 操作时间戳
      */
@@ -45,7 +45,7 @@ class LogModel extends Model
 
     /**
      * 获取格式化的时间
-     * 
+     *
      * @return string 格式化的时间
      */
     public function getFormattedTime(): string
@@ -55,7 +55,7 @@ class LogModel extends Model
 
     /**
      * 获取解析后的数据
-     * 
+     *
      * @return array 解析后的JSON数据
      */
     public function getParsedData(): array

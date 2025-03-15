@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /*******************************************************************************
  * Copyright (c) 2022. Ankio. All Rights Reserved.
  ******************************************************************************/
@@ -15,8 +17,7 @@ namespace nova\plugin\login\device;
 
 class Os
 {
-
-    static function get($ua)
+    public static function get($ua)
     {
         $version = null;
         $code = null;
