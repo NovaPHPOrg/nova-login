@@ -153,7 +153,7 @@ class PwdLoginManager extends BaseLoginManager
             if (!Context::instance()->isDebug()) {
                 $this->resetFailedAttempts($ip);
             }
-            LogDao::getInstance()->logAction($user->id, "登录成功");
+            LogDao::getInstance()->logAction($user->id, "login","登录成功");
             return $user;
         } else {
             $this->recordFailedAttempt($ip);
@@ -234,7 +234,7 @@ class PwdLoginManager extends BaseLoginManager
         $this->cache->delete($attemptsKey);
     }
 
-    public function redirectToProvider(): string
+    public  function redirectToProvider(): string
     {
         return "/login";
     }
@@ -273,7 +273,7 @@ class PwdLoginManager extends BaseLoginManager
 
         $userDao->updateModel($user);
 
-        LogDao::getInstance()->logAction($user->id, "密码重置成功");
+        LogDao::getInstance()->logAction($user->id, "reset","密码重置成功");
         Logger::info("reset password - success");
         return true;
     }

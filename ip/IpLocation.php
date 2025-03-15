@@ -7,6 +7,9 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\ip;
 
+use nova\plugin\login\ip\IpParser\IpV6wry;
+use nova\plugin\login\ip\IpParser\QWry;
+
 /**
  *
  */

@@ -21,6 +21,7 @@ class LoginManager
 {
     private int $loginCount = 0; //最多允许的登录数量
 
+
     public static function register(): void
     {
         SSOLoginManager::register();
@@ -56,14 +57,6 @@ class LoginManager
 
             // Get user's login records
             $loginRecords = $this->getCache()->get("user_logins:{$user->id}", []);
-            $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-            [$OsName, $OsImg, $BrowserName, $BrowserImg] = UserAgent::parse($ua);
-            $loginRecords[] = [
-                'token' => $token,
-                'time' => time(),
-                'session_id' => Session::getInstance()->id(), // Store PHP's session ID instead
-                'device' => "$OsImg $OsName $BrowserImg $BrowserName"
-            ];
 
             // If login count exceeds limit, remove oldest login
             if (count($loginRecords) > $this->loginCount) {
@@ -78,6 +71,14 @@ class LoginManager
                 // Log action
                 LogDao::getInstance()->logAction($user->id, "login", "登录数量超过限制，最早的登录被踢下线");
             }
+            $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+            [$OsName, $OsImg, $BrowserName, $BrowserImg] = UserAgent::parse($ua);
+            $loginRecords[] = [
+                'token' => $token,
+                'time' => time(),
+                'session_id' => Session::getInstance()->id(), // Store PHP's session ID instead
+                'device' => "$OsImg $OsName $BrowserImg $BrowserName"
+            ];
 
             // Save updated login records
             $this->getCache()->set("user_logins:{$user->id}", $loginRecords);
@@ -97,50 +98,46 @@ class LoginManager
      * 判断用户是否登录
      * 通过比对 Session 中的 token 和缓存中的 token 来防止多地登录
      *
-     * @return bool 是否已登录
+     * @return bool|UserModel 是否已登录
      */
-    public function checkLogin(): bool|UserModel
+    public function checkLogin(): ?UserModel
     {
-        try {
-            // Get token and user from session
-            $token = Session::getInstance()->get('token', null);
-            $user = Session::getInstance()->get('user', null);
-            if (!is_string($token) || !is_object($user) || empty($user) || empty($token)) {
-                return false;
-            }
+        // Get token and user from session
+        $token = Session::getInstance()->get('token', null);
+        $user = Session::getInstance()->get('user', null);
 
-            // Get user's login records
-            $loginRecords = $this->getCache()->get("user_logins:{$user->id}", []);
 
-            // Get current session ID
-            $currentSessionId = Session::getInstance()->id();
-
-            // Check if current token is in valid login records and session ID matches
-            $tokenValid = false;
-            foreach ($loginRecords as $record) {
-                if ($record['token'] === $token) {
-                    // If session_id exists in record, verify it matches current session
-                    if (!isset($record['session_id']) || $record['session_id'] !== $currentSessionId) {
-                        // Session ID mismatch - possible session hijacking attempt
-                        LogDao::getInstance()->logAction($user->id, "checkLogin", "会话ID不匹配，可能存在会话劫持。");
-                        Session::getInstance()->destroy();
-                        return false;
-                    }
-                    $tokenValid = true;
-                    break;
-                }
-            }
-
-            if (!$tokenValid) {
-                LogDao::getInstance()->logAction($user->id, "checkLogin", "登录已失效，当前账号退出。");
-                Session::getInstance()->destroy();
-                return false;
-            }
-            return $user;
-        } catch (\Exception $e) {
-            Logger::error($e->getMessage(), $e->getTrace());
-            return false;
+        if (!is_string($token) || !is_object($user) || empty($user) || empty($token)) {
+            return null;
         }
+
+        // Get user's login records
+        $loginRecords = $this->getCache()->get("user_logins:{$user->id}", []);
+        // Get current session ID
+        $currentSessionId = Session::getInstance()->id();
+
+        // Check if current token is in valid login records and session ID matches
+        $tokenValid = false;
+        foreach ($loginRecords as $record) {
+            if ($record['token'] === $token) {
+                // If session_id exists in record, verify it matches current session
+                if (!isset($record['session_id']) || $record['session_id'] !== $currentSessionId) {
+                    // Session ID mismatch - possible session hijacking attempt
+                    LogDao::getInstance()->logAction($user->id, "checkLogin", "会话ID不匹配，可能存在会话劫持。");
+                    Session::getInstance()->destroy();
+                    return false;
+                }
+                $tokenValid = true;
+                break;
+            }
+        }
+
+        if (!$tokenValid) {
+            LogDao::getInstance()->logAction($user->id, "checkLogin", "登录已失效，当前账号退出。");
+            Session::getInstance()->destroy();
+            return null;
+        }
+        return $user;
     }
 
     /**
@@ -248,5 +245,15 @@ class LoginManager
         // 更新登录记录
         $this->getCache()->set("user_logins:$user_id", $loginRecords);
     }
+
+    public function redirectLogin(): string
+    {
+        if (config("sso")){
+            return (new SSOLoginManager())->redirectToProvider();
+        }else{
+            return (new PwdLoginManager())->redirectToProvider();
+        }
+    }
+
 
 }

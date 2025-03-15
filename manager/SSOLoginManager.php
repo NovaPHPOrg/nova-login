@@ -444,7 +444,7 @@ class SSOLoginManager extends BaseLoginManager
         }
     }
 
-    public function redirectToProvider(): string
+    public  function redirectToProvider(): string
     {
         $redirectUrl = Context::instance()->request()->getBasicAddress() . "/callback";
         return $this->getSSOLoginUrl($redirectUrl);

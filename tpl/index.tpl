@@ -289,7 +289,6 @@
                     // 根据后端返回决定是否显示验证码
                     if (response.need_captcha) {
                         needCaptcha = true;
-                        showCaptcha(submitForm);
                     }
                     loading.close();
                 }

@@ -70,8 +70,8 @@ class QWry implements IpParserInterface
 
         return [
             'ip' => $ip,
-            'country' => $tmp['country'],
-            'area' => $tmp['area'],
+            'country' => $tmp['country'] ?? "",
+            'area' => $tmp['area'] ?? "",
         ];
     }
 
@@ -115,8 +115,12 @@ class QWry implements IpParserInterface
     private function getLong(): int
     {
         //将读取的little-endian编码的4个字节转化为长整型数
-        $result = unpack('Vlong', fread($this->fp, 4));
-        return $result['long'];
+        $data = fread($this->fp, 4);
+        if ($data === false || strlen($data) < 4) {
+            return 0; // Return 0 if we can't read 4 bytes
+        }
+        $result = unpack('Vlong', $data);
+        return $result['long'] ?? 0; // Return 0 if unpack fails
     }
 
     /**
@@ -145,9 +149,13 @@ class QWry implements IpParserInterface
         // 如果没有找到就返回最后一条IP记录（qqwry.dat的版本信息）
         while ($l <= $u) {
             // 当上边界小于下边界时，查找失败
-            $i = floor(($l + $u) / 2);
+            $i = (int)floor(($l + $u) / 2);
+            $offset = (int)($this->firstIp + $i * 7);
+            if ($offset < 0) {
+                return null;
+            }
             // 计算近似中间记录
-            fseek($this->fp, $this->firstIp + $i * 7);
+            fseek($this->fp, $offset);
             $beginip = strrev(fread($this->fp, 4));
             // 获取中间记录的开始IP地址
             // strrev函数在这里的作用是将little-endian的压缩IP地址转化为big-endian的格式
@@ -157,7 +165,11 @@ class QWry implements IpParserInterface
                 $u = $i - 1;
                 // 将搜索的上边界修改为中间记录减一
             } else {
-                fseek($this->fp, $this->getLong3());
+                $offset3 = $this->getLong3();
+                if ($offset3 < 0) {
+                    return null;
+                }
+                fseek($this->fp, $offset3);
                 $endip = strrev(fread($this->fp, 4));
                 // 获取中间记录的结束IP地址
                 if ($ip > $endip) {
@@ -166,32 +178,51 @@ class QWry implements IpParserInterface
                     // 将搜索的下边界修改为中间记录加一
                 } else {
                     // 用户的IP在中间记录的IP范围内时
-                    $findip = $this->firstIp + $i * 7;
+                    $findip = (int)($this->firstIp + $i * 7);
                     break;
                     // 则表示找到结果，退出循环
                 }
             }
         }
         //获取查找到的IP地理位置信息
+        if ($findip < 0) {
+            return null;
+        }
         fseek($this->fp, $findip);
         $location['beginip'] = long2ip($this->getLong());
         // 用户IP所在范围的开始地址
         $offset = $this->getLong3();
+        if ($offset < 0) {
+            return null;
+        }
         fseek($this->fp, $offset);
         $location['endip'] = long2ip($this->getLong());
         // 用户IP所在范围的结束地址
         $byte = fread($this->fp, 1);
+        if ($byte === false) {
+            return null;
+        }
         // 标志字节
         switch (ord($byte)) {
             case 1: // 标志字节为1，表示国家和区域信息都被同时重定向
                 $countryOffset = $this->getLong3();
+                if ($countryOffset < 0) {
+                    return null;
+                }
                 // 重定向地址
                 fseek($this->fp, $countryOffset);
                 $byte = fread($this->fp, 1);
+                if ($byte === false) {
+                    return null;
+                }
                 // 标志字节
                 switch (ord($byte)) {
                     case 2: // 标志字节为2，表示国家信息被重定向
-                        fseek($this->fp, $this->getLong3());
+                        $redirectOffset = $this->getLong3();
+                        if ($redirectOffset < 0) {
+                            return null;
+                        }
+                        fseek($this->fp, $redirectOffset);
                         $location['country'] = $this->getString();
                         fseek($this->fp, $countryOffset + 4);
                         $location['area'] = $this->getArea();
@@ -203,7 +234,11 @@ class QWry implements IpParserInterface
                 }
                 break;
             case 2: // 标志字节为2，表示国家信息被重定向
-                fseek($this->fp, $this->getLong3());
+                $redirectOffset = $this->getLong3();
+                if ($redirectOffset < 0) {
+                    return null;
+                }
+                fseek($this->fp, $redirectOffset);
                 $location['country'] = $this->getString();
                 fseek($this->fp, $offset + 8);
                 $location['area'] = $this->getArea();
@@ -260,11 +295,22 @@ class QWry implements IpParserInterface
      * @access private
      * @return int
      */
-    private function getLong3()
+    private function getLong3(): int
     {
         //将读取的little-endian编码的3个字节转化为长整型数
-        $result = unpack('Vlong', fread($this->fp, 3) . chr(0));
-        return $result['long'];
+        if (!is_resource($this->fp)) {
+            return -1;
+        }
+        $data = fread($this->fp, 3);
+        if ($data === false || strlen($data) < 3) {
+            return -1; // Return -1 to indicate error
+        }
+        $result = unpack('Vlong', $data . chr(0));
+        if (!isset($result['long'])) {
+            return -1;
+        }
+        $value = (int)$result['long'];
+        return $value >= 0 ? $value : -1; // Ensure non-negative value
     }
 
     /**
