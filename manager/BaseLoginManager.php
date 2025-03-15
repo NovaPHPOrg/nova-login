@@ -16,7 +16,7 @@ abstract class BaseLoginManager
      */
     abstract public function authenticate(array $credentials): bool|UserModel;
 
-    abstract public  function redirectToProvider(): string;
+    abstract public function redirectToProvider(): string;
 
     abstract public static function register();
 

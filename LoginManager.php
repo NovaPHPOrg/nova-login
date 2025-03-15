@@ -21,7 +21,6 @@ class LoginManager
 {
     private int $loginCount = 0; //最多允许的登录数量
 
-
     public static function register(): void
     {
         SSOLoginManager::register();
@@ -105,7 +104,6 @@ class LoginManager
         // Get token and user from session
         $token = Session::getInstance()->get('token', null);
         $user = Session::getInstance()->get('user', null);
-
 
         if (!is_string($token) || !is_object($user) || empty($user) || empty($token)) {
             return null;
@@ -248,12 +246,11 @@ class LoginManager
 
     public function redirectLogin(): string
     {
-        if (config("sso")){
+        if (config("sso")) {
             return (new SSOLoginManager())->redirectToProvider();
-        }else{
+        } else {
             return (new PwdLoginManager())->redirectToProvider();
         }
     }
-
 
 }

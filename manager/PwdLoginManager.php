@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace nova\plugin\login\manager;
 
 use nova\framework\cache\Cache;
+
+use function nova\framework\config;
+
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
 use nova\framework\event\EventManager;
@@ -17,7 +20,6 @@ use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\LoginManager;
 use nova\plugin\tpl\ViewResponse;
-use function nova\framework\config;
 
 class PwdLoginManager extends BaseLoginManager
 {
@@ -86,7 +88,7 @@ class PwdLoginManager extends BaseLoginManager
     /**
      * 生成验证码图片
      */
-    protected function generateCaptcha(): void 
+    protected function generateCaptcha(): void
     {
         $captcha = new CaptchaManager();
         $captcha->generate();
@@ -95,7 +97,7 @@ class PwdLoginManager extends BaseLoginManager
     /**
      * 验证验证码
      */
-    protected function validateCaptcha(?string $code): bool 
+    protected function validateCaptcha(?string $code): bool
     {
         if ($code === null) {
             return false;
@@ -153,7 +155,7 @@ class PwdLoginManager extends BaseLoginManager
             if (!Context::instance()->isDebug()) {
                 $this->resetFailedAttempts($ip);
             }
-            LogDao::getInstance()->logAction($user->id, "login","登录成功");
+            LogDao::getInstance()->logAction($user->id, "login", "登录成功");
             return $user;
         } else {
             $this->recordFailedAttempt($ip);
@@ -234,7 +236,7 @@ class PwdLoginManager extends BaseLoginManager
         $this->cache->delete($attemptsKey);
     }
 
-    public  function redirectToProvider(): string
+    public function redirectToProvider(): string
     {
         return "/login";
     }
@@ -273,7 +275,7 @@ class PwdLoginManager extends BaseLoginManager
 
         $userDao->updateModel($user);
 
-        LogDao::getInstance()->logAction($user->id, "reset","密码重置成功");
+        LogDao::getInstance()->logAction($user->id, "reset", "密码重置成功");
         Logger::info("reset password - success");
         return true;
     }
