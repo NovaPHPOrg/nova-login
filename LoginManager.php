@@ -7,6 +7,7 @@ use app\db\Dao\LogDao;
 use nova\framework\cache\Cache;
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
+use nova\framework\event\EventManager;
 use nova\framework\http\Response;
 use nova\plugin\cookie\Session;
 use nova\plugin\login\db\Model\UserModel;
@@ -31,9 +32,14 @@ class LoginManager
 
     static function getInstance(): LoginManager
     {
-        return Context::instance()->getOrCreateInstance("loginManager", function () use ($count) {
+        return Context::instance()->getOrCreateInstance("loginManager", function () {
             return new LoginManager();
         });
+    }
+
+    function redirectToProvider(): string
+    {
+        return $this->loginManager->redirectToProvider();
     }
 
     function __construct()
