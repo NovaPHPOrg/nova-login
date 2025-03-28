@@ -6,6 +6,7 @@ namespace nova\plugin\login;
 
 use nova\framework\cache\Cache;
 
+use nova\framework\core\StaticRegister;
 use function nova\framework\config;
 
 use nova\framework\core\Context;
@@ -17,11 +18,11 @@ use nova\plugin\login\device\UserAgent;
 use nova\plugin\login\manager\PwdLoginManager;
 use nova\plugin\login\manager\SSOLoginManager;
 
-class LoginManager
+class LoginManager extends StaticRegister
 {
     private int $loginCount = 0; //最多允许的登录数量
 
-    public static function register(): void
+    public static function registerInfo(): void
     {
         SSOLoginManager::register();
         PwdLoginManager::register();
