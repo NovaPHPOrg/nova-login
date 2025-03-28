@@ -44,7 +44,7 @@ class PwdLoginManager extends BaseLoginManager
                 $viewResponse->init(
                     "",
                     [
-                        "title" => config('name') ?? "AnkioのLogin"
+                        "title" => config('system.name') ?? "登录",
                     ],
                     false,
                     "{",
