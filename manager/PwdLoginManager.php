@@ -70,7 +70,7 @@ class PwdLoginManager extends BaseLoginManager
                 $user = LoginManager::getInstance()->checkLogin();
                 if ($user && $pwd->reset($_POST, $user)) {
                     LoginManager::getInstance()->logout($user->id);
-                    throw new AppExitException(Response::asJson(['code' => 301, "msg" => "操作成功", "data" => "/login"]), "Exit by Login");
+                    throw new AppExitException(Response::asJson(['code' => 200, "msg" => "操作成功", "data" => "/login"]), "Exit by Login");
                 }
                 throw new AppExitException(Response::asJson(['code' => 403, "msg" => "重置失败"]), "Exit by Login");
             }
@@ -250,12 +250,13 @@ class PwdLoginManager extends BaseLoginManager
      */
     private function reset(array $data, UserModel $user): bool
     {
-        // Validate required fields
-        if (!isset($data['current_password']) || !isset($data['new_password'])) {
+
+        // 验证当前密码
+        if (!isset($data['current_password'])) {
             return false;
         }
 
-        // Verify current password
+        // 验证当前密码
         $userDao = UserDao::getInstance();
         $isCurrentPasswordValid = $userDao->login($user->email, $data['current_password']) !== null;
 
@@ -267,16 +268,35 @@ class PwdLoginManager extends BaseLoginManager
             return false;
         }
 
-        // Validate new password requirements
-        if (strlen($data['new_password']) < 8) {
-            throw new AppExitException(Response::asJson(['code' => 403, "msg" => "密码过短"]), "Exit by Change Password");
+        // 如果提供了新密码，则更新密码
+        if (!empty($data['new_password'])) {
+            // 验证新密码要求
+            if (strlen($data['new_password']) < 8) {
+                throw new AppExitException(Response::asJson(['code' => 403, "msg" => "密码过短"]), "Exit by Change Password");
+            }
+            $user->password = password_hash($data['new_password'], PASSWORD_DEFAULT);
         }
-        $user->password = password_hash($data['new_password'], PASSWORD_DEFAULT);
+
+        // 如果提供了新邮箱，则更新邮箱
+        if (isset($data['email'])) {
+            // 验证邮箱格式
+            if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+                throw new AppExitException(Response::asJson(['code' => 403, "msg" => "邮箱格式不正确"]), "Exit by Change Email");
+            }
+
+            // 检查邮箱是否已被其他用户使用
+            $existingUser = $userDao->findByEmail($data['email']);
+            if ($existingUser && $existingUser->id !== $user->id) {
+                throw new AppExitException(Response::asJson(['code' => 403, "msg" => "该邮箱已被使用"]), "Exit by Change Email");
+            }
+
+            $user->email = $data['email'];
+        }
 
         $userDao->updateModel($user);
 
-        LogDao::getInstance()->logAction($user->id, "reset", "密码重置成功");
-        Logger::info("reset password - success");
+        LogDao::getInstance()->logAction($user->id, "reset", "账户信息更新成功");
+        Logger::info("reset account info - success");
         return true;
     }
 
