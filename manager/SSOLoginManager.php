@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\manager;
 
+use nova\framework\exception\AppExitException;
+use nova\framework\http\Response;
+use nova\plugin\http\HttpException;
+use nova\plugin\login\LoginManager;
 use function nova\framework\config;
 
 use nova\framework\core\Context;
@@ -14,439 +18,168 @@ use nova\plugin\http\HttpClient;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
 use Random\RandomException;
+use function Symfony\Component\String\u;
 
+/**
+ * SSO单点登录管理器
+ * 用于处理与SSO认证服务器的交互，包括登录、回调处理等功能
+ */
 class SSOLoginManager extends BaseLoginManager
 {
-    public static function register(): void
-    {
-        EventManager::addListener("route.before", function ($event, &$uri) {
-
-        });
-    }
-
-    /**
-     * @var string SSO provider URL
-     */
-    protected string $ssoProviderUrl;
-
-    /**
-     * @var string Client ID for SSO
-     */
+    /** @var string SSO客户端ID */
     protected string $clientId;
-
-    /**
-     * @var string Client secret for SSO
-     */
+    /** @var string SSO客户端密钥 */
     protected string $clientSecret;
+    /** @var string SSO服务提供者基础URL */
+    protected string $providerUrl;
+    /** @var string 授权URL */
+    protected string $authorizeUrl;
+    /** @var string 令牌URL */
+    protected string $tokenUrl;
+    /** @var string 用户信息URL */
+    protected string $userinfoUrl;
+    /** @var bool 是否必须拥有账户才能登录 */
+    protected bool $mustHasAccount = true;
 
     /**
-     * @var string Token endpoint
+     * 构造函数
+     * 初始化SSO配置信息
      */
-    protected string $tokenEndpoint;
-
-    /**
-     * @var string Userinfo endpoint
-     */
-    protected string $userinfoEndpoint;
-
-    /**
-     * @var string JWKS endpoint for token validation
-     */
-    protected string $jwksEndpoint;
-
     public function __construct()
     {
-        $this->ssoProviderUrl = config('sso.provider_url');
-        $this->clientId = config('sso.client_id');
+        $this->providerUrl  = config('sso.provider_url');
+        $this->clientId     = config('sso.client_id');
         $this->clientSecret = config('sso.client_secret');
-        $this->tokenEndpoint = config('sso.token_endpoint', $this->ssoProviderUrl . '/token');
-        $this->userinfoEndpoint = config('sso.userinfo_endpoint', $this->ssoProviderUrl . '/userinfo');
-        $this->jwksEndpoint = config('sso.jwks_endpoint', $this->ssoProviderUrl . '/.well-known/jwks.json');
+        $this->mustHasAccount = config('sso.must_has_account') ?? true; //必须拥有账户
+        $this->authorizeUrl = $this->providerUrl . '/authorize';
+        $this->tokenUrl     = $this->providerUrl . '/token';
+        $this->userinfoUrl  = $this->providerUrl . '/userinfo';
     }
 
     /**
-     * Authenticate a user with SSO token
-     *
-     * @param  array          $credentials Should contain 'token' key
-     * @return bool|UserModel Whether authentication was successful
+     * 获取SSO登录URL
+     * @param string $redirectUri 登录成功后的回调地址
+     * @return string 完整的SSO登录URL
      */
-    public function authenticate(array $credentials): bool|UserModel
+    public function getLoginUrl(string $redirectUri): string
     {
-        // Validate required credentials
-        if (!isset($credentials['token'])) {
-            return false;
-        }
+        $state = bin2hex(random_bytes(12));
+        Session::getInstance()->set('sso_state', $state);
+        Session::getInstance()->set('sso_redirect', $redirectUri);
 
-        try {
-            // Validate the token
-            if (!$this->validateSSOToken($credentials['token'])) {
-                return false;
-            }
-
-            // Get user info from token
-            $userInfo = $this->getUserInfoFromToken($credentials['token']);
-            if (!$userInfo) {
-                return false;
-            }
-
-            // Find or create user based on SSO identity
-            $user = $this->findOrCreateUser($userInfo);
-            if (!$user) {
-                return false;
-            }
-
-            return $user;
-        } catch (\Exception $e) {
-            Logger::error('SSO authentication error: ' . $e->getMessage(), $e->getTrace());
-            return false;
-        }
+        return $this->authorizeUrl . '?' . http_build_query([
+                'client_id' => $this->clientId,
+                'redirect_uri' => $redirectUri,
+                'response_type' => 'code',
+                'scope' => 'openid email profile',
+                'state' => $state,
+            ]);
     }
 
     /**
-     * Get SSO login URL
-     *
-     * @param  string $redirectUrl URL to redirect after successful login
-     * @return string SSO login URL
+     * 处理SSO回调
+     * @param string $code 授权码
+     * @param string $state 状态码
+     * @return UserModel|null 用户模型，如果登录失败则返回null
      */
-    public function getSSOLoginUrl(string $redirectUrl): string
+    public function handleCallback(string $code, string $state): ?UserModel
     {
-        // Generate a state parameter to prevent CSRF
-        $state = bin2hex(random_bytes(16));
-        $nonce = bin2hex(random_bytes(16));
+        $storedState = Session::getInstance()->get('sso_state');
+        $redirectUri = Session::getInstance()->get('sso_redirect');
 
-        // Store state in session for validation when the user returns
-        Session::getInstance()->set('sso_state', $state, 3600); // 1 hour expiry
-        Session::getInstance()->set('sso_nonce', $nonce, 3600);
-        Session::getInstance()->set('sso_redirect', $redirectUrl, 3600);
+        if ($state !== $storedState || !$redirectUri) {
+            return null;
+        }
 
-        // Build the authorization URL
-        return $this->ssoProviderUrl . '/authorize?' . http_build_query([
-            'client_id' => $this->clientId,
-            'redirect_uri' => $redirectUrl,
-            'response_type' => 'code',
-            'scope' => 'openid profile email',
-            'state' => $state,
-            'nonce' => $nonce
-        ]);
+        $response = HttpClient::init($this->tokenUrl)
+            ->post([
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => $redirectUri,
+                'client_id' => $this->clientId,
+                'client_secret' => $this->clientSecret,
+            ], 'form')
+            ->send();
+
+        $data = json_decode($response->getBody(), true);
+        if (!isset($data['access_token'])) {
+            return null;
+        }
+
+        $userInfo = $this->fetchUserInfo($data['access_token']);
+        if (!$userInfo || !isset($userInfo['email'])) {
+            return null;
+        }
+        return $this->findOrCreateUser($userInfo);
     }
 
     /**
-     * Handle SSO callback
-     *
-     * @param  string         $code  Authorization code from SSO provider
-     * @param  string         $state State parameter for CSRF protection
-     * @return bool|UserModel Whether the callback was handled successfully
+     * 获取用户信息
+     * @param string $token 访问令牌
+     * @return array|null 用户信息数组，如果获取失败则返回null
+     * @throws HttpException
      */
-    public function handleCallback(string $code, string $state): bool|UserModel
+    protected function fetchUserInfo(string $token): ?array
     {
-        try {
-            // Verify state parameter to prevent CSRF attacks
-            $storedState = Session::getInstance()->get('sso_state');
-            $storedNonce = Session::getInstance()->get('sso_nonce');
-            $redirectUrl = Session::getInstance()->get('sso_redirect');
+        $res = HttpClient::init($this->userinfoUrl)
+            ->get()
+            ->setHeader('Authorization', 'Bearer ' . $token)
+            ->send();
 
-            if (empty($storedState) || $storedState !== $state) {
-                Logger::warning('SSO callback: Invalid state parameter');
-                return false;
-            }
-
-            // Exchange code for tokens
-            $tokens = $this->exchangeCodeForTokens($code, $redirectUrl);
-            if (!$tokens || !isset($tokens['access_token']) || !isset($tokens['id_token'])) {
-                Logger::warning('SSO callback: Failed to exchange code for tokens');
-                return false;
-            }
-
-            // Validate ID token
-            if (!$this->validateIdToken($tokens['id_token'], $storedNonce)) {
-                Logger::warning('SSO callback: Invalid ID token');
-                return false;
-            }
-
-            // Get user info
-            $userInfo = $this->getUserInfo($tokens['access_token']);
-            if (!$userInfo) {
-                Logger::warning('SSO callback: Failed to get user info');
-                return false;
-            }
-
-            // Find or create user
-            $user = $this->findOrCreateUser($userInfo);
-            if (!$user) {
-                Logger::warning('SSO callback: Failed to find or create user');
-                return false;
-            }
-
-            // Store tokens in session
-            Session::getInstance()->set('sso_access_token', $tokens['access_token']);
-            Session::getInstance()->set('sso_id_token', $tokens['id_token']);
-            if (isset($tokens['refresh_token'])) {
-                Session::getInstance()->set('sso_refresh_token', $tokens['refresh_token']);
-            }
-
-            // Clean up state and nonce
-            Session::getInstance()->delete('sso_state');
-            Session::getInstance()->delete('sso_nonce');
-            Session::getInstance()->delete('sso_redirect');
-
-            return $user;
-        } catch (\Exception $e) {
-            Logger::error('SSO callback error: ' . $e->getMessage(), $e->getTrace());
-            return false;
-        }
+        return $res->getHttpCode() === 200 ? json_decode($res->getBody(), true) : null;
     }
 
     /**
-     * Exchange authorization code for tokens
-     *
-     * @param  string      $code        Authorization code
-     * @param  string      $redirectUrl Redirect URL used in the initial request
-     * @return array|false Tokens or false on failure
+     * 查找或创建用户
+     * @param array $info 用户信息
+     * @return UserModel|null 用户模型，如果创建失败则返回null
      */
-    protected function exchangeCodeForTokens(string $code, string $redirectUrl): array|false
+    protected function findOrCreateUser(array $info): ?UserModel
     {
-        try {
-            $response = HttpClient::init($this->tokenEndpoint)
-                ->post([
-                    'grant_type' => 'authorization_code',
-                    'code' => $code,
-                    'redirect_uri' => $redirectUrl,
-                    'client_id' => $this->clientId,
-                    'client_secret' => $this->clientSecret
-                ], 'form')
-                ->setHeader('Accept', 'application/json')
-                ->send();
+        $dao = UserDao::getInstance();
+        $user = $dao->findByEmail($info['email']);
+        if ($user) return $user;
 
-            if ($response->getHttpCode() !== 200) {
-                Logger::error('SSO token exchange failed: ' . $response->getHttpCode() . ' ' . $response->getBody());
-                return false;
-            }
+        if ($this->mustHasAccount)return null;
 
-            $tokens = json_decode($response->getBody(), true);
-            if (!is_array($tokens)) {
-                Logger::error('SSO token exchange: Invalid response format');
-                return false;
-            }
-
-            return $tokens;
-        } catch (\Exception $e) {
-            Logger::error('SSO token exchange error: ' . $e->getMessage(), $e->getTrace());
-            return false;
-        }
-    }
-
-    /**
-     * Get user info from access token
-     *
-     * @param  string      $accessToken Access token
-     * @return array|false User info or false on failure
-     */
-    protected function getUserInfo(string $accessToken): array|false
-    {
-        try {
-            $response = HttpClient::init($this->userinfoEndpoint)
-                ->get()
-                ->setHeader('Authorization', 'Bearer ' . $accessToken)
-                ->setHeader('Accept', 'application/json')
-                ->send();
-
-            if ($response->getHttpCode() !== 200) {
-                Logger::error('SSO userinfo request failed: ' . $response->getHttpCode() . ' ' . $response->getBody());
-                return false;
-            }
-
-            $userInfo = json_decode($response->getBody(), true);
-            if (!is_array($userInfo)) {
-                Logger::error('SSO userinfo: Invalid response format');
-                return false;
-            }
-
-            return $userInfo;
-        } catch (\Exception $e) {
-            Logger::error('SSO userinfo error: ' . $e->getMessage(), $e->getTrace());
-            return false;
-        }
-    }
-
-    /**
-     * Get user info from ID token
-     *
-     * @param  string      $token ID token
-     * @return array|false User info or false on failure
-     */
-    protected function getUserInfoFromToken(string $token): array|false
-    {
-        // For ID tokens, we can decode the JWT payload without verification
-        // since we're assuming it's already verified
-        $parts = explode('.', $token);
-        if (count($parts) !== 3) {
-            return false;
-        }
-
-        $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
-        if (!is_array($payload)) {
-            return false;
-        }
-
-        return $payload;
-    }
-
-    /**
-     * Find or create user based on SSO identity
-     *
-     * @param  array           $userInfo User info from SSO provider
-     * @return UserModel|false User model or false on failure
-     * @throws RandomException
-     */
-    protected function findOrCreateUser(array $userInfo): UserModel|false
-    {
-        // Extract required user information
-        $email = $userInfo['email'] ?? null;
-        $name = $userInfo['name'] ?? ($userInfo['preferred_username'] ?? null);
-
-        if (!$email) {
-            Logger::error('SSO: Missing email in user info');
-            return false;
-        }
-
-        // Try to find user by email
-        $userDao = UserDao::getInstance();
-        $user = $userDao->findByEmail($email);
-
-        if (!$user) {
-            // User doesn't exist, create a new one
-            if (!$name) {
-                // Use email as name if name is not provided
-                $name = $email;
-            }
-
-            // Create new user
-            $user = new UserModel();
-            $user->email = $email; // Email is the primary identifier
-            $user->display_name = $name;
-            $user->password = bin2hex(random_bytes(16)); // Random password, not used for SSO
-            $user->roles = ['user'];
-            // Save user
-            $userDao->insertModel($user);
-        } else {
-            // Update existing user info if needed
-            if ($name && $user->display_name !== $name) {
-                $user->display_name = $name;
-                $userDao->updateModel($user);
-            }
-        }
-
+        $user = new UserModel();
+        $user->email = $info['email'];
+        $user->display_name = $info['name'] ?? $info['email'];
+        $user->password = bin2hex(random_bytes(16));
+        $user->roles = ['user'];
+        $dao->insertModel($user);
         return $user;
     }
 
     /**
-     * Validate ID token
-     *
-     * @param  string $idToken ID token to validate
-     * @param  string $nonce   Expected nonce value
-     * @return bool   Whether the token is valid
+     * 重定向到SSO服务提供者
+     * @return string 重定向URL
      */
-    protected function validateIdToken(string $idToken, string $nonce): bool
-    {
-        // Basic JWT structure validation
-        $parts = explode('.', $idToken);
-        if (count($parts) !== 3) {
-            return false;
-        }
-
-        // Decode header and payload
-        $header = json_decode(base64_decode(strtr($parts[0], '-_', '+/')), true);
-        $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
-
-        if (!$header || !$payload) {
-            return false;
-        }
-
-        // Verify token hasn't expired
-        if (!isset($payload['exp']) || $payload['exp'] < time()) {
-            return false;
-        }
-
-        // Verify audience
-        if (!isset($payload['aud']) || $payload['aud'] !== $this->clientId) {
-            return false;
-        }
-
-        // Verify issuer
-        if (!isset($payload['iss']) || $payload['iss'] !== $this->ssoProviderUrl) {
-            return false;
-        }
-
-        // Verify nonce if provided
-        if ($nonce && (!isset($payload['nonce']) || $payload['nonce'] !== $nonce)) {
-            return false;
-        }
-
-        // For a production system, you should verify the signature using the JWKS endpoint
-        // This would require fetching the public keys and validating the signature
-
-        return true;
-    }
-
-    /**
-     * Validate SSO token
-     *
-     * @param  string $token SSO token
-     * @return bool   Whether the token is valid
-     */
-    protected function validateSSOToken(string $token): bool
-    {
-        try {
-            $response = HttpClient::init($this->userinfoEndpoint)
-                ->get()
-                ->setHeader('Authorization', 'Bearer ' . $token)
-                ->setHeader('Accept', 'application/json')
-                ->send();
-
-            return $response->getHttpCode() === 200;
-        } catch (\Exception $e) {
-            Logger::error('SSO token validation error: ' . $e->getMessage(), $e->getTrace());
-            return false;
-        }
-    }
-
-    /**
-     * Logout user from SSO
-     *
-     * @return bool Whether logout was successful
-     */
-    public function logout(): bool
-    {
-        try {
-            // Get ID token from session
-            $idToken = Session::getInstance()->get('sso_id_token');
-
-            // Clear SSO-related session data
-            Session::getInstance()->delete('sso_access_token');
-            Session::getInstance()->delete('sso_id_token');
-            Session::getInstance()->delete('sso_refresh_token');
-
-            // If the SSO provider supports logout, redirect the user
-            if ($idToken) {
-                $logoutUrl = $this->ssoProviderUrl . '/logout?' . http_build_query([
-                    'id_token_hint' => $idToken,
-                    'post_logout_redirect_uri' => Context::instance()->request()->getBasicAddress()
-                ]);
-
-                // In a real implementation, you would redirect to this URL
-                // For now, we'll just return success
-            }
-
-            return true;
-        } catch (\Exception $e) {
-            Logger::error('SSO logout error: ' . $e->getMessage(), $e->getTrace());
-            return false;
-        }
-    }
-
     public function redirectToProvider(): string
     {
-        $redirectUrl = Context::instance()->request()->getBasicAddress() . "/callback";
-        return $this->getSSOLoginUrl($redirectUrl);
+       return $this->getLoginUrl(Context::instance()->request()->getBasicAddress()."/sso/callback");
+    }
+
+    /**
+     * 注册SSO路由处理器
+     * 用于处理SSO回调请求
+     */
+    public static function register()
+    {
+        EventManager::addListener("route.before", function ($event, &$uri) {
+
+            if (!str_starts_with($uri, "/sso/callback")) {
+                return;
+            }
+
+            $user =  (new SSOLoginManager())->handleCallback($_GET['code'], $_GET['state']);
+            if ($user){
+                LoginManager::getInstance()->login($user);
+                $redirect = config("login_callback") ?? "/";
+                throw new AppExitException(Response::asRedirect($redirect));
+            }
+            throw new AppExitException(Response::asText("login failed"));
+
+        });
     }
 }

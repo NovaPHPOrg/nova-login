@@ -118,21 +118,21 @@ class PwdLoginManager extends BaseLoginManager
     }
 
     /**
-     * Authenticate a user with username and password
+     * 使用用户名和密码验证用户
      *
-     * @param  array          $credentials Should contain 'username' and 'password' keys
-     * @return bool|UserModel Whether authentication was successful
+     * @param  array          $credentials 应包含 'username' 和 'password' 键
+     * @return bool|UserModel 验证是否成功
      */
     public function authenticate(array $credentials): bool|UserModel
     {
-        // Validate required credentials
+        // 验证必需的凭据
         if (!isset($credentials['email']) || !isset($credentials['password'])) {
             return false;
         }
         $ip = Context::instance()->request()->getClientIP();
-        // Skip IP blocking in debug mode
+        // 在调试模式下跳过IP封禁
         if (!Context::instance()->isDebug()) {
-            // Check if IP is blocked
+            // 检查IP是否被封禁
             $blockInfo = $this->checkIpBlocked($ip);
             if ($blockInfo['blocked']) {
                 Logger::warning("IP $ip 因为多次尝试登录失败而被封禁", $credentials);
@@ -151,7 +151,7 @@ class PwdLoginManager extends BaseLoginManager
         $user = UserDao::getInstance()->login($credentials['email'], $credentials['password']);
 
         if ($user) {
-            // Login successful, reset failed attempts if not in debug mode
+            // 登录成功，如果不是调试模式则重置失败尝试次数
             if (!Context::instance()->isDebug()) {
                 $this->resetFailedAttempts($ip);
             }
@@ -160,17 +160,17 @@ class PwdLoginManager extends BaseLoginManager
         } else {
             $this->recordFailedAttempt($ip);
             Logger::warning("IP $ip 登录失败", $credentials);
-            // Login failed, record the attempt if not in debug mode
+            // 登录失败，如果不是调试模式则记录尝试
 
             return false;
         }
     }
 
     /**
-     * Check if an IP is currently blocked
+     * 检查IP是否当前被封禁
      *
-     * @param  string $ip The IP address to check
-     * @return array  Block status and information
+     * @param  string $ip 要检查的IP地址
+     * @return array  封禁状态和信息
      */
     protected function checkIpBlocked(string $ip): array
     {
@@ -178,16 +178,16 @@ class PwdLoginManager extends BaseLoginManager
         $blockData = $this->cache->get($blockKey);
 
         if ($blockData) {
-            $blockDuration = 300 * $blockData['attempts']; // 5 minutes * number of attempts
+            $blockDuration = 300 * $blockData['attempts']; // 5分钟 * 尝试次数
 
-            // Check if block has expired
+            // 检查封禁是否已过期
             if (time() < $blockData['time'] + $blockDuration) {
                 return [
                     'blocked' => true,
                     'remaining' => ($blockData['time'] + $blockDuration) - time()
                 ];
             } else {
-                // Block expired, remove it
+                // 封禁已过期，移除它
                 $this->cache->delete($blockKey);
             }
         }
@@ -196,9 +196,9 @@ class PwdLoginManager extends BaseLoginManager
     }
 
     /**
-     * Record a failed login attempt
+     * 记录失败的登录尝试
      *
-     * @param  string $ip The IP address to record
+     * @param  string $ip 要记录的IP地址
      * @return void
      */
     protected function recordFailedAttempt(string $ip): void
@@ -207,9 +207,9 @@ class PwdLoginManager extends BaseLoginManager
         $attempts = (int)$this->cache->get($attemptsKey, 0);
 
         $attempts++;
-        $this->cache->set($attemptsKey, $attempts, 3600); // Store for 1 hour
+        $this->cache->set($attemptsKey, $attempts, 3600); // 存储1小时
 
-        // Block IP after 3 failed attempts
+        // 3次失败尝试后封禁IP
         if ($attempts >= 3 && !Context::instance()->isDebug()) {
             $blockKey = "login:blocked:{$ip}";
             $blockCount = ceil($attempts / 3);
@@ -217,17 +217,17 @@ class PwdLoginManager extends BaseLoginManager
             $this->cache->set($blockKey, [
                 'time' => time(),
                 'attempts' => $blockCount
-            ], 86400); // Store for 24 hours (max block time)
+            ], 86400); // 存储24小时（最大封禁时间）
 
-            // Reset failed attempts counter
+            // 重置失败尝试计数器
             $this->cache->set($attemptsKey, 0, 3600);
         }
     }
 
     /**
-     * Reset failed attempts for an IP after successful login
+     * 登录成功后重置IP的失败尝试次数
      *
-     * @param  string $ip The IP address to reset
+     * @param  string $ip 要重置的IP地址
      * @return void
      */
     protected function resetFailedAttempts(string $ip): void
@@ -242,10 +242,10 @@ class PwdLoginManager extends BaseLoginManager
     }
 
     /**
-     * Reset user password
+     * 重置用户密码
      *
-     * @param  array            $data Should contain 'current_password' and 'new_password' keys
-     * @return bool             Whether password reset was successful
+     * @param  array            $data 应包含 'current_password' 和 'new_password' 键
+     * @return bool             密码重置是否成功
      * @throws AppExitException
      */
     private function reset(array $data, UserModel $user): bool
@@ -261,7 +261,7 @@ class PwdLoginManager extends BaseLoginManager
         $isCurrentPasswordValid = $userDao->login($user->email, $data['current_password']) !== null;
 
         if (!$isCurrentPasswordValid) {
-            Logger::warning("Failed password reset attempt - invalid current password", [
+            Logger::warning("密码重置失败 - 当前密码无效", [
                 'user_id' => $user->id,
                 'ip' => Context::instance()->request()->getClientIP()
             ]);
@@ -296,7 +296,7 @@ class PwdLoginManager extends BaseLoginManager
         $userDao->updateModel($user);
 
         LogDao::getInstance()->logAction($user->id, "reset", "账户信息更新成功");
-        Logger::info("reset account info - success");
+        Logger::info("重置账户信息 - 成功");
         return true;
     }
 
