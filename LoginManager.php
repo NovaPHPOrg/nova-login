@@ -197,7 +197,6 @@ class LoginManager extends StaticRegister
                 if (is_object($currentUser) && $currentUser->id === $user_id) {
                     Session::getInstance()->destroy();
                 }
-
                 return true;
             }
 
@@ -247,7 +246,7 @@ class LoginManager extends StaticRegister
 
     public function redirectLogin(): string
     {
-        if (config("sso")) {
+        if (config("sso.enable")) {
             return (new SSOLoginManager())->redirectToProvider();
         } else {
             return (new PwdLoginManager())->redirectToProvider();

@@ -11,14 +11,11 @@ use nova\plugin\login\LoginManager;
 use function nova\framework\config;
 
 use nova\framework\core\Context;
-use nova\framework\core\Logger;
 use nova\framework\event\EventManager;
 use nova\plugin\cookie\Session;
 use nova\plugin\http\HttpClient;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
-use Random\RandomException;
-use function Symfony\Component\String\u;
 
 /**
  * SSO单点登录管理器
