@@ -82,7 +82,7 @@ class PwdLoginManager extends BaseLoginManager
 
     public function __construct()
     {
-        $this->cache = new Cache();
+        $this->cache = Context::instance()->cache;
     }
 
     /**

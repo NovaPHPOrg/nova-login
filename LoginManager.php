@@ -148,7 +148,7 @@ class LoginManager extends StaticRegister
     protected function getCache(): Cache
     {
         if ($this->cache === null) {
-            $this->cache = new Cache();
+            $this->cache = Context::instance()->cache;
         }
         return $this->cache;
     }
