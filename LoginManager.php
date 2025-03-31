@@ -6,11 +6,12 @@ namespace nova\plugin\login;
 
 use nova\framework\cache\Cache;
 
-use nova\framework\core\StaticRegister;
 use function nova\framework\config;
 
 use nova\framework\core\Context;
+
 use nova\framework\core\Logger;
+use nova\framework\core\StaticRegister;
 use nova\plugin\cookie\Session;
 use nova\plugin\login\db\Dao\LogDao;
 use nova\plugin\login\db\Model\UserModel;

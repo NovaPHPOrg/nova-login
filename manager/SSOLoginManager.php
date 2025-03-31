@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\manager;
 
-use nova\framework\exception\AppExitException;
-use nova\framework\http\Response;
-use nova\plugin\http\HttpException;
-use nova\plugin\login\LoginManager;
 use function nova\framework\config;
 
 use nova\framework\core\Context;
 use nova\framework\event\EventManager;
+use nova\framework\exception\AppExitException;
+use nova\framework\http\Response;
+
 use nova\plugin\cookie\Session;
 use nova\plugin\http\HttpClient;
+use nova\plugin\http\HttpException;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
+use nova\plugin\login\LoginManager;
 
 /**
  * SSO单点登录管理器
@@ -55,7 +56,7 @@ class SSOLoginManager extends BaseLoginManager
 
     /**
      * 获取SSO登录URL
-     * @param string $redirectUri 登录成功后的回调地址
+     * @param  string $redirectUri 登录成功后的回调地址
      * @return string 完整的SSO登录URL
      */
     public function getLoginUrl(string $redirectUri): string
@@ -65,18 +66,18 @@ class SSOLoginManager extends BaseLoginManager
         Session::getInstance()->set('sso_redirect', $redirectUri);
 
         return $this->authorizeUrl . '?' . http_build_query([
-                'client_id' => $this->clientId,
-                'redirect_uri' => $redirectUri,
-                'response_type' => 'code',
-                'scope' => 'openid email profile',
-                'state' => $state,
-            ]);
+            'client_id' => $this->clientId,
+            'redirect_uri' => $redirectUri,
+            'response_type' => 'code',
+            'scope' => 'openid email profile',
+            'state' => $state,
+        ]);
     }
 
     /**
      * 处理SSO回调
-     * @param string $code 授权码
-     * @param string $state 状态码
+     * @param  string         $code  授权码
+     * @param  string         $state 状态码
      * @return UserModel|null 用户模型，如果登录失败则返回null
      */
     public function handleCallback(string $code, string $state): ?UserModel
@@ -112,8 +113,8 @@ class SSOLoginManager extends BaseLoginManager
 
     /**
      * 获取用户信息
-     * @param string $token 访问令牌
-     * @return array|null 用户信息数组，如果获取失败则返回null
+     * @param  string        $token 访问令牌
+     * @return array|null    用户信息数组，如果获取失败则返回null
      * @throws HttpException
      */
     protected function fetchUserInfo(string $token): ?array
@@ -128,16 +129,20 @@ class SSOLoginManager extends BaseLoginManager
 
     /**
      * 查找或创建用户
-     * @param array $info 用户信息
+     * @param  array          $info 用户信息
      * @return UserModel|null 用户模型，如果创建失败则返回null
      */
     protected function findOrCreateUser(array $info): ?UserModel
     {
         $dao = UserDao::getInstance();
         $user = $dao->findByEmail($info['email']);
-        if ($user) return $user;
+        if ($user) {
+            return $user;
+        }
 
-        if ($this->mustHasAccount)return null;
+        if ($this->mustHasAccount) {
+            return null;
+        }
 
         $user = new UserModel();
         $user->email = $info['email'];
@@ -154,7 +159,7 @@ class SSOLoginManager extends BaseLoginManager
      */
     public function redirectToProvider(): string
     {
-       return $this->getLoginUrl(Context::instance()->request()->getBasicAddress()."/sso/callback");
+        return $this->getLoginUrl(Context::instance()->request()->getBasicAddress()."/sso/callback");
     }
 
     /**
@@ -170,7 +175,7 @@ class SSOLoginManager extends BaseLoginManager
             }
 
             $user =  (new SSOLoginManager())->handleCallback($_GET['code'], $_GET['state']);
-            if ($user){
+            if ($user) {
                 LoginManager::getInstance()->login($user);
                 $redirect = config("login_callback") ?? "/";
                 throw new AppExitException(Response::asRedirect($redirect));
