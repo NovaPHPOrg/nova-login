@@ -6,14 +6,13 @@ namespace nova\plugin\login\db\Dao;
 
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
-use nova\plugin\corn\schedule\TaskerAbstract;
-use nova\plugin\corn\schedule\TaskerManager;
-use nova\plugin\corn\schedule\TaskerTime;
+
+use function nova\framework\throttle;
+
 use nova\plugin\login\db\Model\LogModel;
 use nova\plugin\login\device\UserAgent;
 use nova\plugin\login\ip\IpLocation;
 use nova\plugin\orm\object\Dao;
-use Throwable;
 
 class LogDao extends Dao
 {
@@ -24,36 +23,9 @@ class LogDao extends Dao
     public function __construct(string $model = null, string $child = null, $user_key = null)
     {
         parent::__construct(LogModel::class, $child, $user_key);
-
-        // 注册每天凌晨2点执行的清理任务
-        if (!TaskerManager::has('log_cleanup')) {
-            TaskerManager::add(
-                TaskerTime::day(2, 0),
-                new class () extends TaskerAbstract {
-                    public function onStart(): void
-                    {
-                        LogDao::getInstance()->cleanOldLogs();
-                    }
-
-                    public function getTimeOut(): int
-                    {
-                        return 300; // 5分钟超时
-                    }
-
-                    public function onStop(): void
-                    {
-
-                    }
-
-                    public function onAbort(Throwable $e): void
-                    {
-                        Logger::error("日志清理任务异常中止: " . $e->getMessage());
-                    }
-                },
-                'log_cleanup',
-                -1 // 循环执行
-            );
-        }
+        throttle("log_cleanup", 300, function () {
+            LogDao::getInstance()->cleanOldLogs();
+        });
     }
 
     /**
