@@ -272,7 +272,7 @@ class PwdLoginManager extends BaseLoginManager
         if (!empty($data['new_password'])) {
             // 验证新密码要求
             if (strlen($data['new_password']) < 8) {
-                throw new AppExitException(Response::asJson(['code' => 403, "msg" => "密码过短"]), "Exit by Change Password");
+                throw new AppExitException(Response::asJson(['code' => 403, "msg" => "密码过短"]), "Exit by Change Mail");
             }
             $user->password = password_hash($data['new_password'], PASSWORD_DEFAULT);
         }
