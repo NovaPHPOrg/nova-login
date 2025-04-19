@@ -40,9 +40,14 @@ class Avatar
         return($svgCode);
     }
 
-    public static function svg($avatarId, $noBackground = false): string
+    public static function svg($avatarId, $noBackground = false,$base64 = false): string
     {
-        return (new Avatar($avatarId, $noBackground))->svgCode;
+        $code = (new Avatar($avatarId, $noBackground))->svgCode;
+        if ($base64){
+            // 创建data URI
+            $code = 'data:image/svg+xml;base64,' .  base64_encode($code);
+        }
+        return $code;
     }
 
     public function getFinal($part, $partV, $theme, $themes, $sP)
