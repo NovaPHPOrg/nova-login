@@ -17,6 +17,6 @@ return [
         ]
         ],
          "require" =>[
-            "tpl","captcha","ip","device","avatar","http"
+            "tpl","captcha","ip","device","avatar","http","device","ip"
         ]
 ];
