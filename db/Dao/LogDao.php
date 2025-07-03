@@ -6,13 +6,11 @@ namespace nova\plugin\login\db\Dao;
 
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
-
-use function nova\framework\throttle;
-
+use nova\plugin\ip\IpLocation;
 use nova\plugin\login\db\Model\LogModel;
-use nova\plugin\login\device\UserAgent;
-use nova\plugin\login\ip\IpLocation;
+use nova\plugin\device\UserAgent;
 use nova\plugin\orm\object\Dao;
+use function nova\framework\throttle;
 
 class LogDao extends Dao
 {

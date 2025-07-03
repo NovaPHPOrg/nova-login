@@ -15,7 +15,7 @@ use nova\framework\core\StaticRegister;
 use nova\plugin\cookie\Session;
 use nova\plugin\login\db\Dao\LogDao;
 use nova\plugin\login\db\Model\UserModel;
-use nova\plugin\login\device\UserAgent;
+use nova\plugin\device\UserAgent;
 use nova\plugin\login\manager\PwdLoginManager;
 use nova\plugin\login\manager\SSOLoginManager;
 
