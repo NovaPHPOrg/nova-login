@@ -45,10 +45,11 @@ class SSOLoginManager extends BaseLoginManager
      */
     public function __construct()
     {
-        $this->providerUrl  = config('sso.provider_url');
-        $this->clientId     = config('sso.client_id');
-        $this->clientSecret = config('sso.client_secret');
-        $this->mustHasAccount = config('sso.must_has_account') ?? true; //必须拥有账户
+        parent::__construct();
+        $this->providerUrl  = $this->loginConfig->ssoProviderUrl;
+        $this->clientId     = $this->loginConfig->ssoClientId;
+        $this->clientSecret = $this->loginConfig->ssoClientSecret;
+        $this->mustHasAccount = $this->loginConfig->ssoMustHasAccount;
         $this->authorizeUrl = $this->providerUrl . '/authorize';
         $this->tokenUrl     = $this->providerUrl . '/token';
         $this->userinfoUrl  = $this->providerUrl . '/userinfo';
@@ -174,10 +175,12 @@ class SSOLoginManager extends BaseLoginManager
                 return;
             }
 
-            $user =  (new SSOLoginManager())->handleCallback($_GET['code'], $_GET['state']);
+            $sso = new SSOLoginManager();
+
+            $user =  $sso->handleCallback($_GET['code'], $_GET['state']);
             if ($user) {
                 LoginManager::getInstance()->login($user);
-                $redirect = config("login_callback") ?? "/";
+                $redirect =$sso->loginConfig->loginCallback;
                 throw new AppExitException(Response::asRedirect($redirect));
             }
             throw new AppExitException(Response::asText("login failed"));

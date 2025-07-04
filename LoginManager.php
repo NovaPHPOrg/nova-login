@@ -21,7 +21,6 @@ use nova\plugin\login\manager\SSOLoginManager;
 
 class LoginManager extends StaticRegister
 {
-    private int $loginCount = 0; //最多允许的登录数量
 
     public static function registerInfo(): void
     {
@@ -36,9 +35,12 @@ class LoginManager extends StaticRegister
         });
     }
 
+
+    private LoginConfig $loginConfig;
+
     public function __construct()
     {
-        $this->loginCount = config("login.count") ?? 1;
+       $this->loginConfig = new LoginConfig();
     }
 
     /**
@@ -60,7 +62,7 @@ class LoginManager extends StaticRegister
             $loginRecords = $this->getCache()->get("user_logins:{$user->id}", []);
 
             // If login count exceeds limit, remove oldest login
-            if (count($loginRecords) > $this->loginCount) {
+            if (count($loginRecords) > $this->loginConfig->allowedLoginCount) {
                 // Sort by timestamp
                 usort($loginRecords, function ($a, $b) {
                     return $a['time'] <=> $b['time'];
