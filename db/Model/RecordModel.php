@@ -11,6 +11,10 @@ class RecordModel extends Model
     public string $device = "";
     public int $user_id = 0;
 
+    public string $ip = "";
+
+    public string $addr= "";
+
     function user():?UserModel
     {
         return UserDAO::getInstance()->id($this->user_id);

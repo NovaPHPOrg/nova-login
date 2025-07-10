@@ -3,6 +3,7 @@
 namespace nova\plugin\login\db\Dao;
 
 use nova\plugin\device\UserAgent;
+use nova\plugin\ip\IpLocation;
 use nova\plugin\login\db\Model\RecordModel;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\orm\object\Dao;
@@ -24,7 +25,10 @@ class RecordDao extends Dao
         $record->device =  "$OsImg $OsName $BrowserImg $BrowserName";
         $record->user_id = $user_id;
         $record->time = time();
+        $record->ip = $_SERVER['REMOTE_ADDR'];
+        $record->addr = join(" ",IpLocation::getLocation($record->ip));
         $record->id = $this->insertModel($record);
+
         return $record;
     }
 
