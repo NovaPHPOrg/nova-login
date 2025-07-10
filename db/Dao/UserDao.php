@@ -42,4 +42,10 @@ class UserDao extends Dao
         return $this->find(null, ['username' => $username]);
     }
 
+
+    public function id(int $user_id): ?UserModel
+    {
+        return $this->find(null, ['id' => $user_id]);
+    }
+
 }
