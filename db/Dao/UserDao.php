@@ -31,7 +31,7 @@ class UserDao extends Dao
     public function login(string $username, string $password): ?UserModel
     {
         $user = $this->username($username);
-        if (empty($user) || password_verify($password, $user->password)) {
+        if (empty($user) || !password_verify($password, $user->password)) {
             return null;
         }
         return $user;

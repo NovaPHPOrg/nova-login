@@ -58,7 +58,7 @@ class LoginManager extends StaticRegister
                 $loginRecords = RecordDao::getInstance()->records($user);
             }
 
-            $record = RecordDao::getInstance()->add($user->id,$_SERVER[]);
+            $record = RecordDao::getInstance()->add($user->id);
 
             Session::getInstance()->set('record', $record);
 

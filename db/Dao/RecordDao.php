@@ -7,6 +7,7 @@ use nova\plugin\ip\IpLocation;
 use nova\plugin\login\db\Model\RecordModel;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\orm\object\Dao;
+use nova\plugin\orm\object\Field;
 
 class RecordDao extends Dao
 {
@@ -34,6 +35,6 @@ class RecordDao extends Dao
 
     function id(int $id): ?RecordModel
     {
-        return $this->find("id",['id'=>$id]);
+        return $this->find(null,['id'=>$id]);
     }
 }

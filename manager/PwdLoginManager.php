@@ -134,7 +134,7 @@ class PwdLoginManager extends BaseLoginManager
             return false;
         }
 
-        if(!Captcha::verify("user_login", $credentials['captcha'])) {
+        if(!Captcha::verify("user_login", (int)$credentials['captcha'])) {
             Logger::warning( $credentials['username']." 登录失败，验证码错误", $credentials);
             return false;
         }
