@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\manager;
 
-use function nova\framework\config;
-
 use nova\framework\core\Context;
 use nova\framework\event\EventManager;
 use nova\framework\exception\AppExitException;
 use nova\framework\http\Response;
 
+use nova\plugin\avatar\Avatar;
 use nova\plugin\cookie\Session;
 use nova\plugin\http\HttpClient;
 use nova\plugin\http\HttpException;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\LoginManager;
+use function nova\framework\uuid;
 
 /**
  * SSO单点登录管理器
@@ -62,7 +62,7 @@ class SSOLoginManager extends BaseLoginManager
      */
     public function getLoginUrl(string $redirectUri): string
     {
-        $state = bin2hex(random_bytes(12));
+        $state = uuid();
         Session::getInstance()->set('sso_state', $state);
         Session::getInstance()->set('sso_redirect', $redirectUri);
 
@@ -77,9 +77,10 @@ class SSOLoginManager extends BaseLoginManager
 
     /**
      * 处理SSO回调
-     * @param  string         $code  授权码
-     * @param  string         $state 状态码
+     * @param string $code 授权码
+     * @param string $state 状态码
      * @return UserModel|null 用户模型，如果登录失败则返回null
+     * @throws HttpException
      */
     public function handleCallback(string $code, string $state): ?UserModel
     {
@@ -106,7 +107,7 @@ class SSOLoginManager extends BaseLoginManager
         }
 
         $userInfo = $this->fetchUserInfo($data['access_token']);
-        if (!$userInfo || !isset($userInfo['email'])) {
+        if (!$userInfo || !isset($userInfo['username'])) {
             return null;
         }
         return $this->findOrCreateUser($userInfo);
@@ -136,7 +137,7 @@ class SSOLoginManager extends BaseLoginManager
     protected function findOrCreateUser(array $info): ?UserModel
     {
         $dao = UserDao::getInstance();
-        $user = $dao->findByEmail($info['email']);
+        $user = $dao->username($info['username']);
         if ($user) {
             return $user;
         }
@@ -146,10 +147,10 @@ class SSOLoginManager extends BaseLoginManager
         }
 
         $user = new UserModel();
-        $user->email = $info['email'];
-        $user->display_name = $info['name'] ?? $info['email'];
-        $user->password = bin2hex(random_bytes(16));
-        $user->roles = ['user'];
+        $user->display_name = $info['nickname'] ?? $info['username'];
+        $user->password = password_hash(uuid(), PASSWORD_DEFAULT);
+        $user->username = $info['username'];
+        $user->avatar = $info['avatar_url'] ?? Avatar::toBase64(Avatar::svg($info['username']));
         $dao->insertModel($user);
         return $user;
     }
@@ -167,7 +168,7 @@ class SSOLoginManager extends BaseLoginManager
      * 注册SSO路由处理器
      * 用于处理SSO回调请求
      */
-    public static function register()
+    public static function register(): void
     {
         EventManager::addListener("route.before", function ($event, &$uri) {
 

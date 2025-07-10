@@ -35,7 +35,7 @@
             -moz-osx-font-smoothing: grayscale;
 
             /* 设置背景图片 */
-            background-image: url('https://api.dujin.org/bing/1366.php');
+            background-image: url('https://api.ankio.net/bing');
 
             /* 背景图片覆盖整个页面 */
             background-size: cover;
@@ -187,7 +187,7 @@
     <mdui-card variant="filled" class="p-4 content-input">
         <h2>{$title}管理后台</h2>
         <form action="#" method="post" id="form">
-            <mdui-text-field icon="mail" name="email" label="邮箱" class="mb-3" required></mdui-text-field>
+            <mdui-text-field icon="mail" name="username" label="账号" class="mb-3" required></mdui-text-field>
             <mdui-text-field icon="lock" name="password" label="密码" toggle-password  type="password" class="mb-3" required></mdui-text-field>
             <mdui-button form="form" type="submit">登录</mdui-button>
         </form>
@@ -246,22 +246,14 @@
     });
 </script>
 <script>
-    let needCaptcha = false;
-
-    // 页面加载时检查是否需要显示验证码
-    $.request.get("/login/need_captcha", function(response) {
-        if (response.code === 200 && response.data === true) {
-            needCaptcha = true;
-        }
-    });
 
     $("#form").on("submit", function (e) {
         e.preventDefault();
         let data = $(this).serializeObject();
         
         // 验证邮箱和密码是否为空
-        if (!data.email || !data.email.trim()) {
-            $.toaster.error('请输入邮箱');
+        if (!data.username || !data.username.trim()) {
+            $.toaster.error('请输入账号');
             return false;
         }
         if (!data.password || !data.password.trim()) {
@@ -297,18 +289,14 @@
             });
         };
 
-        if (needCaptcha) {
-            showCaptcha(submitForm);
-        } else {
-            submitForm();
-        }
+        showCaptcha(submitForm);
         
         return false;
     });
 
     function showCaptcha(submitForm) {
         let captcha = document.querySelector("nova-captcha");
-        captcha.show(function (data) {
+        captcha.show("user-login",function (data) {
             submitForm(data.captcha)
         })
     }
@@ -338,7 +326,7 @@
             .catch(console.error);
     }
 
-    setInterval(fetchHitokoto, 5000); // Fetch new hitokoto every 5 seconds
+    setInterval(fetchHitokoto, 30000); // Fetch new hitokoto every 5 seconds
 
     // Initial fetch
     fetchHitokoto();

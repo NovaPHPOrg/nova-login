@@ -17,9 +17,6 @@ return [
         ]
         ],
          "require" =>[
-            "tpl","captcha","ip","device","avatar","http","device","ip"
+            "tpl","captcha","avatar","http"
         ],
-    "ui" =>[
-        "theme" ,"language"
-    ]
 ];
