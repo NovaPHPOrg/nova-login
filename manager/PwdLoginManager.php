@@ -102,7 +102,7 @@ class PwdLoginManager extends BaseLoginManager
         $user = LoginManager::getInstance()->checkLogin();
 
         if ($user && $this->reset($post, $user)) {
-            LoginManager::getInstance()->logout($user->id);
+            LoginManager::getInstance()->logout();
             return $this->json(200, '操作成功', ['data' => '/login']);
         }
 

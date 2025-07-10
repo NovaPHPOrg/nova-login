@@ -25,6 +25,7 @@ class LoginManager extends StaticRegister
 
     public static function getInstance(): LoginManager
     {
+        Session::getInstance()->start();
         return Context::instance()->getOrCreateInstance("loginManager", function () {
             return new LoginManager();
         });
@@ -73,7 +74,7 @@ class LoginManager extends StaticRegister
      * 判断用户是否登录
      * 通过比对 Session 中的 token 和缓存中的 token 来防止多地登录
      *
-     * @return bool|UserModel 是否已登录
+     * @return ?UserModel 是否已登录
      */
     public function checkLogin(): ?UserModel
     {

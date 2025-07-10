@@ -263,8 +263,7 @@
 
         const submitForm = (captchaData = null) => {
             if (captchaData) {
-                data.captcha = captchaData.captcha;
-                data.captcha_state = captchaData.state;
+                data.captcha = captchaData;
             }
 
             let loading = new Loading(document.querySelector("#form"));
@@ -278,10 +277,6 @@
                     }, 500);
                 } else {
                     $.toaster.error(response.msg);
-                    // 根据后端返回决定是否显示验证码
-                    if (response.need_captcha) {
-                        needCaptcha = true;
-                    }
                     loading.close();
                 }
             }, function () {
@@ -296,13 +291,13 @@
 
     function showCaptcha(submitForm) {
         let captcha = document.querySelector("nova-captcha");
-        captcha.show("user-login",function (data) {
+        captcha.show("user_login",function (data) {
             submitForm(data.captcha)
         })
     }
 
     function fetchHitokoto() {
-        fetch('https://international.v1.hitokoto.cn')
+        fetch('https://api.ankio.net/hitokoto')
             .then(response => response.json())
             .then(data => {
                 const hitokotoElement = document.getElementById('hitokoto');
@@ -310,7 +305,7 @@
 
                 hitokotoContainer.classList.remove('show');
                 let t = Date.now();
-                $.translate(data.hitokoto, (translated) => {
+                $.translate(data.data.hitokoto, (translated) => {
                     let t4 = 500 - (Date.now() - t);
                     t4 = t4 < 0 ? 0 : t4;
                     setTimeout(() => {
@@ -319,7 +314,7 @@
                     }, t4);
                 });
                 setTimeout(() => {
-                    hitokotoElement.innerText = data.hitokoto;
+                    hitokotoElement.innerText = data.data.hitokoto;
                     hitokotoContainer.classList.add('show');
                 }, 500); // Delay to allow for collapse before showing new text
             })
