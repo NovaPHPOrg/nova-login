@@ -64,7 +64,6 @@ class SSOLoginManager extends BaseLoginManager
     {
         $state = uuid();
         Session::getInstance()->set('sso_state', $state);
-        Session::getInstance()->set('sso_redirect', $redirectUri);
 
         return $this->authorizeUrl . '?' . http_build_query([
             'client_id' => $this->clientId,
@@ -80,14 +79,14 @@ class SSOLoginManager extends BaseLoginManager
      * @param string $code 授权码
      * @param string $state 状态码
      * @return UserModel|null 用户模型，如果登录失败则返回null
-     * @throws HttpException
+     * @throws HttpException|AppExitException
      */
     public function handleCallback(string $code, string $state): ?UserModel
     {
-        $storedState = Session::getInstance()->get('sso_state');
-        $redirectUri = Session::getInstance()->get('sso_redirect');
 
-        if ($state !== $storedState || !$redirectUri) {
+        $storedState = Session::getInstance()->get('sso_state');
+
+        if ($state !== $storedState) {
             return null;
         }
 
@@ -95,7 +94,6 @@ class SSOLoginManager extends BaseLoginManager
             ->post([
                 'grant_type' => 'authorization_code',
                 'code' => $code,
-                'redirect_uri' => $redirectUri,
                 'client_id' => $this->clientId,
                 'client_secret' => $this->clientSecret,
             ], 'form')
@@ -175,6 +173,8 @@ class SSOLoginManager extends BaseLoginManager
             if (!str_starts_with($uri, "/sso/callback")) {
                 return;
             }
+
+
 
             $sso = new SSOLoginManager();
 
