@@ -14,7 +14,7 @@ abstract class BaseLoginManager
     public function __construct()
     {
         $this->loginConfig = new LoginConfig();
-       Session::getInstance()->start();
+        Session::getInstance()->start();
     }
 
     abstract public function redirectToProvider(): string;

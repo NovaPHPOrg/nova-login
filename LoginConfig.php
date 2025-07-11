@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace nova\plugin\login;
 
 use nova\framework\core\ConfigObject;

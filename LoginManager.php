@@ -16,7 +16,6 @@ use nova\plugin\login\manager\SSOLoginManager;
 
 class LoginManager extends StaticRegister
 {
-
     public static function registerInfo(): void
     {
         SSOLoginManager::register();
@@ -31,7 +30,6 @@ class LoginManager extends StaticRegister
         });
     }
 
-
     private LoginConfig $loginConfig;
 
     public function __construct()
@@ -43,8 +41,8 @@ class LoginManager extends StaticRegister
      * 用户登录时调用，记录登录token
      * 如果登录数量超过限制，会将最早的登录踢下线
      *
-     * @param UserModel $user 登录id
-     * @return bool       登录是否成功
+     * @param  UserModel $user 登录id
+     * @return bool      登录是否成功
      */
     public function login(UserModel $user): bool
     {
@@ -61,7 +59,6 @@ class LoginManager extends StaticRegister
             $record = RecordDao::getInstance()->add($user->id);
 
             Session::getInstance()->set('record', $record);
-
 
             return true;
         } catch (\Exception $e) {
@@ -99,11 +96,10 @@ class LoginManager extends StaticRegister
         return $user;
     }
 
-
     /**
      * 用户登出
      *
-     * @return bool        登出是否成功
+     * @return bool 登出是否成功
      */
     public function logout(): bool
     {

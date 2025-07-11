@@ -9,6 +9,8 @@ use nova\framework\event\EventManager;
 use nova\framework\exception\AppExitException;
 use nova\framework\http\Response;
 
+use function nova\framework\uuid;
+
 use nova\plugin\avatar\Avatar;
 use nova\plugin\cookie\Session;
 use nova\plugin\http\HttpClient;
@@ -16,7 +18,6 @@ use nova\plugin\http\HttpException;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\LoginManager;
-use function nova\framework\uuid;
 
 /**
  * SSO单点登录管理器
@@ -76,9 +77,9 @@ class SSOLoginManager extends BaseLoginManager
 
     /**
      * 处理SSO回调
-     * @param string $code 授权码
-     * @param string $state 状态码
-     * @return UserModel|null 用户模型，如果登录失败则返回null
+     * @param  string                         $code  授权码
+     * @param  string                         $state 状态码
+     * @return UserModel|null                 用户模型，如果登录失败则返回null
      * @throws HttpException|AppExitException
      */
     public function handleCallback(string $code, string $state): ?UserModel
@@ -174,14 +175,12 @@ class SSOLoginManager extends BaseLoginManager
                 return;
             }
 
-
-
             $sso = new SSOLoginManager();
 
             $user =  $sso->handleCallback($_GET['code'], $_GET['state']);
             if ($user) {
                 LoginManager::getInstance()->login($user);
-                $redirect =$sso->loginConfig->loginCallback;
+                $redirect = $sso->loginConfig->loginCallback;
                 throw new AppExitException(Response::asRedirect($redirect));
             }
             throw new AppExitException(Response::asText("login failed"));

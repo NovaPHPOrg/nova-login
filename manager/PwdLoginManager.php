@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace nova\plugin\login\manager;
 
 use nova\framework\cache\Cache;
-use nova\plugin\captcha\Captcha;
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
 use nova\framework\event\EventManager;
 use nova\framework\exception\AppExitException;
 use nova\framework\http\Response;
+use nova\plugin\captcha\Captcha;
 use nova\plugin\cookie\Session;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
@@ -19,7 +19,6 @@ use nova\plugin\tpl\ViewResponse;
 
 class PwdLoginManager extends BaseLoginManager
 {
-
     protected Cache $cache;
 
     public function __construct()
@@ -121,11 +120,10 @@ class PwdLoginManager extends BaseLoginManager
      |  业务逻辑：以下内容与旧版保持一致（仅位置调整）
      | ----------------------------------------------------------------- */
 
-
     /**
      * 用户名 + 密码认证
      *
-     * @param array $credentials
+     * @param  array           $credentials
      * @return UserModel|false
      */
     public function authenticate(array $credentials): UserModel|false
@@ -134,8 +132,8 @@ class PwdLoginManager extends BaseLoginManager
             return false;
         }
 
-        if(!Captcha::verify("user_login", (int)$credentials['captcha'])) {
-            Logger::warning( $credentials['username']." 登录失败，验证码错误", $credentials);
+        if (!Captcha::verify("user_login", (int)$credentials['captcha'])) {
+            Logger::warning($credentials['username']." 登录失败，验证码错误", $credentials);
             return false;
         }
 
@@ -148,7 +146,7 @@ class PwdLoginManager extends BaseLoginManager
             return $user;
         }
 
-        Logger::warning( $credentials['username']." 登录失败，密码错误", $credentials);
+        Logger::warning($credentials['username']." 登录失败，密码错误", $credentials);
         return false;
     }
 

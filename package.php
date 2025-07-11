@@ -15,8 +15,8 @@ return [
         "framework_start" => [
             "nova\\plugin\\login\\LoginManager",
         ]
-        ],
-         "require" =>[
-            "tpl","captcha","avatar","http","device","ip"
-        ],
+    ],
+    "require" => [
+        "tpl","captcha","avatar","http","device","ip"
+    ],
 ];

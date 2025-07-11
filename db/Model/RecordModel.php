@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace nova\plugin\login\db\Model;
 
 use nova\plugin\login\db\Dao\UserDao;
@@ -13,9 +15,9 @@ class RecordModel extends Model
 
     public string $ip = "";
 
-    public string $addr= "";
+    public string $addr = "";
 
-    function user():?UserModel
+    public function user(): ?UserModel
     {
         return UserDAO::getInstance()->id($this->user_id);
     }

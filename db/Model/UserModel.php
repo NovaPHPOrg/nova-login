@@ -8,7 +8,6 @@ use nova\plugin\orm\object\Model;
 
 class UserModel extends Model
 {
-
     /**
      * Username for login
      */
@@ -41,6 +40,5 @@ class UserModel extends Model
     {
         return ['password'];
     }
-
 
 }
