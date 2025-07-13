@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\manager;
 
+use app\Application;
 use nova\framework\cache\Cache;
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
@@ -48,7 +49,9 @@ class PwdLoginManager extends BaseLoginManager
             /* 路由分派：5 条分支一目了然 */
             $response = match ($uri) {
                 '/login'              => $mgr->showLogin($redirect),
+                '/login/center'       => $mgr->showLoginCenter(),
                 '/login/pwd'          => $mgr->handleLogin($_POST, $redirect),
+                '/login/sso'          => $mgr->handleSSO(),
                 '/login/captcha'      => $mgr->outputCaptcha(),     // 内部直接 exit
                 '/login/reset'        => $mgr->handleReset($_POST),
                 default               => null,
@@ -78,6 +81,60 @@ class PwdLoginManager extends BaseLoginManager
             ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . 'login' . DS . 'tpl' . DS
         );
         return $view->asTpl('index');
+    }
+
+    private function showLoginCenter(): Response
+    {
+        if (!LoginManager::getInstance()->checkLogin()) {
+            return Response::asRedirect($this->redirectToProvider());
+        }
+
+        $view = new ViewResponse();
+
+
+        $tpl = ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . 'login' . DS . 'tpl' . DS."center";
+
+        //pjax不需要layout
+        if(!(isset($_SERVER['HTTP_X_PJAX']) && $_SERVER['HTTP_X_PJAX'] == 'true')){
+            $tpl = Application::DEFAULT_LAYOUT ?? $tpl;
+
+        }
+        $view->init(
+            '',
+            [
+                'title' => $this->loginConfig->systemName,
+            ],
+            '{',
+            '}',
+            dirname($tpl)
+        );
+        return $view->asTpl(basename($tpl));
+    }
+
+    private function handleSSO(): Response{
+        if (!LoginManager::getInstance()->checkLogin()) {
+            return Response::asRedirect($this->redirectToProvider());
+        }
+        if($_SERVER['REQUEST_METHOD'] == 'GET'){
+            return Response::asJson([
+                "code"  => 200,
+                "data"  => [
+                    'ssoEnable' => $this->loginConfig->ssoEnable,
+                    'ssoProviderUrl' => $this->loginConfig->ssoProviderUrl,
+                    'ssoClientId' => $this->loginConfig->ssoClientId,
+                    'ssoClientSecret' => $this->loginConfig->ssoClientSecret,
+                ]
+            ]);
+        }else{
+            $this->loginConfig->ssoEnable = $_POST['ssoEnable'] ?? $this->loginConfig->ssoEnable;
+            $this->loginConfig->ssoProviderUrl = $_POST['ssoProviderUrl'] ?? $this->loginConfig->ssoProviderUrl;
+            $this->loginConfig->ssoClientId =  $_POST['ssoClientId'] ?? $this->loginConfig->ssoClientId;
+            $this->loginConfig->ssoClientSecret = $_POST['ssoClientSecret'] ?? $this->loginConfig->ssoClientSecret;
+            return Response::asJson([
+                "code"  => 200,
+                "msg"   => "操作成功",
+            ]);
+        }
     }
 
     private function handleLogin(array $post, string $redirect): Response

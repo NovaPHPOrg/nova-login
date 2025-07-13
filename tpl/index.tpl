@@ -14,13 +14,7 @@
     <link rel="stylesheet" href="/static/framework/icons/fonts.css?v={$__v}">
     <link rel="stylesheet" href="/static/framework/utils/Loading.css?v={$__v}">
     <script src="/static/framework/libs/vhcheck.min.js?v={$__v}"></script>
-
-    {if $__debug}
-        <meta http-equiv="expires" content="0">
-        <meta http-equiv="pragma" content="no-cache">
-        <meta http-equiv="cache-control" content="no-cache">
-    {/if}
-
+    <link rel="icon" type="image/ico" href="/static/icons/favicon.ico?v={$__v}"/>
 
     <style id="style">
         body{
@@ -187,7 +181,7 @@
     <mdui-card variant="filled" class="p-4 content-input">
         <h2>{$title}管理后台</h2>
         <form action="#" method="post" id="form">
-            <mdui-text-field icon="mail" name="username" label="账号" class="mb-3" required></mdui-text-field>
+            <mdui-text-field icon="people" name="username" label="账号" class="mb-3" required></mdui-text-field>
             <mdui-text-field icon="lock" name="password" label="密码" toggle-password  type="password" class="mb-3" required></mdui-text-field>
             <mdui-button form="form" type="submit">登录</mdui-button>
         </form>
