@@ -17,6 +17,7 @@ use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\LoginManager;
 use nova\plugin\tpl\ViewResponse;
+use function nova\framework\dump;
 
 class PwdLoginManager extends BaseLoginManager
 {
@@ -85,7 +86,11 @@ class PwdLoginManager extends BaseLoginManager
 
     private function showLoginCenter(): Response
     {
-        if (!LoginManager::getInstance()->checkLogin()) {
+
+        //TODO 这个思路有问题
+
+        $user = LoginManager::getInstance()->checkLogin();
+        if (empty($user)) {
             return Response::asRedirect($this->redirectToProvider());
         }
 
@@ -97,7 +102,6 @@ class PwdLoginManager extends BaseLoginManager
         //pjax不需要layout
         if(!(isset($_SERVER['HTTP_X_PJAX']) && $_SERVER['HTTP_X_PJAX'] == 'true')){
             $tpl = Application::DEFAULT_LAYOUT ?? $tpl;
-
         }
         $view->init(
             '',
@@ -108,7 +112,11 @@ class PwdLoginManager extends BaseLoginManager
             '}',
             dirname($tpl)
         );
-        return $view->asTpl(basename($tpl));
+        return $view->asTpl(basename($tpl),[
+            "username" => $user->username,
+            "header"  => $user->avatar,
+            "nickname" => $user->display_name
+        ]);
     }
 
     private function handleSSO(): Response{
