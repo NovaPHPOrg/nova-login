@@ -59,7 +59,7 @@ class LoginManager extends StaticRegister
             $record = RecordDao::getInstance()->add($user->id);
 
             Session::getInstance()->set('record', $record);
-
+            Session::getInstance()->set('user',$user);
             return true;
         } catch (\Exception $e) {
             Logger::error($e->getMessage(), $e->getTrace());
@@ -88,6 +88,12 @@ class LoginManager extends StaticRegister
             return null;
         }
         $user = $record->user();
+        $sessionUser = Session::getInstance()->get('user');
+        if ($sessionUser instanceof UserModel) {
+            $user->display_name = $sessionUser->display_name;
+            $user->avatar = $sessionUser->avatar;
+        }
+
         if (empty($user)) {
             Session::getInstance()->destroy();
             return null;
