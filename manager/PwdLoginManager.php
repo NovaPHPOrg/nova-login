@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\manager;
 
-use app\Application;
 use nova\framework\cache\Cache;
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
@@ -17,7 +16,6 @@ use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\LoginManager;
 use nova\plugin\tpl\ViewResponse;
-use function nova\framework\dump;
 
 class PwdLoginManager extends BaseLoginManager
 {
@@ -50,7 +48,6 @@ class PwdLoginManager extends BaseLoginManager
             /* 路由分派：5 条分支一目了然 */
             $response = match ($uri) {
                 '/login'              => $mgr->showLogin($redirect),
-                '/login/center'       => $mgr->showLoginCenter(),
                 '/login/pwd'          => $mgr->handleLogin($_POST, $redirect),
                 '/login/sso'          => $mgr->handleSSO(),
                 '/login/captcha'      => $mgr->outputCaptcha(),     // 内部直接 exit
@@ -83,47 +80,14 @@ class PwdLoginManager extends BaseLoginManager
         );
         return $view->asTpl('index');
     }
+    const string CENTER_TPL =  ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . 'login' . DS . 'tpl' . DS."center";
 
-    private function showLoginCenter(): Response
+    private function handleSSO(): Response
     {
-
-        //TODO 这个思路有问题
-
-        $user = LoginManager::getInstance()->checkLogin();
-        if (empty($user)) {
-            return Response::asRedirect($this->redirectToProvider());
-        }
-
-        $view = new ViewResponse();
-
-
-        $tpl = ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . 'login' . DS . 'tpl' . DS."center";
-
-        //pjax不需要layout
-        if(!(isset($_SERVER['HTTP_X_PJAX']) && $_SERVER['HTTP_X_PJAX'] == 'true')){
-            $tpl = Application::DEFAULT_LAYOUT ?? $tpl;
-        }
-        $view->init(
-            '',
-            [
-                'title' => $this->loginConfig->systemName,
-            ],
-            '{',
-            '}',
-            dirname($tpl)
-        );
-        return $view->asTpl(basename($tpl),[
-            "username" => $user->username,
-            "header"  => $user->avatar,
-            "nickname" => $user->display_name
-        ]);
-    }
-
-    private function handleSSO(): Response{
         if (!LoginManager::getInstance()->checkLogin()) {
             return Response::asRedirect($this->redirectToProvider());
         }
-        if($_SERVER['REQUEST_METHOD'] == 'GET'){
+        if ($_SERVER['REQUEST_METHOD'] == 'GET') {
             return Response::asJson([
                 "code"  => 200,
                 "data"  => [
@@ -133,7 +97,7 @@ class PwdLoginManager extends BaseLoginManager
                     'ssoClientSecret' => $this->loginConfig->ssoClientSecret,
                 ]
             ]);
-        }else{
+        } else {
             $this->loginConfig->ssoEnable = $_POST['ssoEnable'] ?? $this->loginConfig->ssoEnable;
             $this->loginConfig->ssoProviderUrl = $_POST['ssoProviderUrl'] ?? $this->loginConfig->ssoProviderUrl;
             $this->loginConfig->ssoClientId =  $_POST['ssoClientId'] ?? $this->loginConfig->ssoClientId;
