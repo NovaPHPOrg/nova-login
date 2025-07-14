@@ -138,6 +138,9 @@ class SSOLoginManager extends BaseLoginManager
         $dao = UserDao::getInstance();
         $user = $dao->username($info['username']);
         if ($user) {
+
+            $user->display_name = $info['nickname'] ?? $info['username'];
+            $user->avatar = $info['avatar_url'] ?? Avatar::toBase64(Avatar::svg($info['username']));
             return $user;
         }
 
