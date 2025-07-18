@@ -24,7 +24,6 @@ class LoginManager extends StaticRegister
 
     public static function getInstance(): LoginManager
     {
-        Session::getInstance()->start();
         return Context::instance()->getOrCreateInstance("loginManager", function () {
             return new LoginManager();
         });
@@ -59,7 +58,7 @@ class LoginManager extends StaticRegister
             $record = RecordDao::getInstance()->add($user->id);
 
             Session::getInstance()->set('record', $record);
-            Session::getInstance()->set('user',$user);
+            Session::getInstance()->set('user', $user);
             return true;
         } catch (\Exception $e) {
             Logger::error($e->getMessage(), $e->getTrace());

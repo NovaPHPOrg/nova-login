@@ -177,8 +177,6 @@ class SSOLoginManager extends BaseLoginManager
                 return;
             }
 
-            Session::getInstance()->start();
-
             $sso = new SSOLoginManager();
 
             $user =  $sso->handleCallback($_GET['code'], $_GET['state']);
