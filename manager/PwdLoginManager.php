@@ -98,7 +98,7 @@ class PwdLoginManager extends BaseLoginManager
                 ]
             ]);
         } else {
-            $this->loginConfig->ssoEnable = $_POST['ssoEnable'] ? boolval($_POST['ssoEnable']) : $this->loginConfig->ssoEnable;
+            $this->loginConfig->ssoEnable = $_POST['ssoEnable'] ?? $this->loginConfig->ssoEnable;
             $this->loginConfig->ssoProviderUrl = $_POST['ssoProviderUrl'] ?? $this->loginConfig->ssoProviderUrl;
             $this->loginConfig->ssoClientId =  $_POST['ssoClientId'] ?? $this->loginConfig->ssoClientId;
             $this->loginConfig->ssoClientSecret = $_POST['ssoClientSecret'] ?? $this->loginConfig->ssoClientSecret;
