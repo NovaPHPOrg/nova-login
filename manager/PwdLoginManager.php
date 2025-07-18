@@ -120,7 +120,7 @@ class PwdLoginManager extends BaseLoginManager
     }
     private function outputCaptcha(): Response
     {
-        return (new Captcha())->create("user_login");
+        return (new Captcha())->create();
     }
 
     private function handleReset(array $post): Response
@@ -159,7 +159,7 @@ class PwdLoginManager extends BaseLoginManager
             return false;
         }
 
-        if (!Captcha::verify("user_login", (int)$credentials['captcha'])) {
+        if (!Captcha::verify((int)$credentials['captcha'])) {
             Logger::warning($credentials['username']." 登录失败，验证码错误", $credentials);
             return false;
         }

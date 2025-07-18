@@ -285,7 +285,7 @@
 
     function showCaptcha(submitForm) {
         let captcha = document.querySelector("nova-captcha");
-        captcha.show("user_login",function (data) {
+        captcha.show(function (data) {
             submitForm(data.captcha)
         })
     }
