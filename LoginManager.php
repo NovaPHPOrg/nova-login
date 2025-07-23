@@ -117,11 +117,13 @@ class LoginManager extends StaticRegister
 
         // 检查登录记录是否存在且有效
         if (!($record instanceof RecordModel)) {
+            Session::getInstance()->set('redirect_uri', $_SERVER['REQUEST_URI']);
             return null;
         }
 
         // 检查数据库中是否还存在该登录记录
         if (RecordDao::getInstance()->id($record->id) == null) {
+            Session::getInstance()->set('redirect_uri', $_SERVER['REQUEST_URI']);
             return null;
         }
 
@@ -137,6 +139,7 @@ class LoginManager extends StaticRegister
 
         // 如果用户信息为空，销毁Session并返回null
         if (empty($user)) {
+            Session::getInstance()->set('redirect_uri', $_SERVER['REQUEST_URI']);
             return null;
         }
 

@@ -11,6 +11,7 @@ use nova\framework\event\EventManager;
 use nova\framework\exception\AppExitException;
 use nova\framework\http\Response;
 use nova\plugin\captcha\Captcha;
+use nova\plugin\cookie\Session;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\LoginManager;
@@ -63,7 +64,7 @@ class PwdLoginManager extends BaseLoginManager
             }
 
             $mgr      = new self();
-            $redirect = $mgr->loginConfig->loginCallback;
+            $redirect = Session::getInstance()->get('redirect_uri', $this->loginConfig->loginCallback);
 
             // 启动会话 & 初始化表
             UserDao::getInstance()->initTable();
