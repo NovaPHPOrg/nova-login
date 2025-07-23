@@ -112,38 +112,41 @@ class LoginManager extends StaticRegister
      */
     public function checkLogin(): ?UserModel
     {
-        // 从Session中获取登录记录
-        $record = Session::getInstance()->get('record');
+        $session = Session::getInstance();
+        $requestUri = $_SERVER['REQUEST_URI'];
 
-        // 检查登录记录是否存在且有效
-        if (!($record instanceof RecordModel)) {
-            Session::getInstance()->set('redirect_uri', $_SERVER['REQUEST_URI']);
-            return null;
-        }
+        // 获取登录记录
+        $record = $session->get('record');
 
-        // 检查数据库中是否还存在该登录记录
-        if (RecordDao::getInstance()->id($record->id) == null) {
-            Session::getInstance()->set('redirect_uri', $_SERVER['REQUEST_URI']);
+        // 验证登录记录是否有效
+        if (!($record instanceof RecordModel) || RecordDao::getInstance()->id($record->id) === null) {
+            $this->setRedirectUriIfNeeded($requestUri);
             return null;
         }
 
         // 获取用户信息
         $user = $record->user();
-        $sessionUser = Session::getInstance()->get('user');
 
-        // 如果Session中有用户信息，使用Session中的显示名称和头像
+        if (!$user instanceof UserModel) {
+            $this->setRedirectUriIfNeeded($requestUri);
+            return null;
+        }
+
+        // 使用 Session 中的用户信息覆盖部分字段
+        $sessionUser = $session->get('user');
         if ($sessionUser instanceof UserModel) {
             $user->display_name = $sessionUser->display_name;
             $user->avatar = $sessionUser->avatar;
         }
 
-        // 如果用户信息为空，销毁Session并返回null
-        if (empty($user)) {
-            Session::getInstance()->set('redirect_uri', $_SERVER['REQUEST_URI']);
-            return null;
-        }
-
         return $user;
+    }
+
+    private function setRedirectUriIfNeeded(string $uri): void
+    {
+        if ($uri !== "/login") {
+            Session::getInstance()->set('redirect_uri', $uri);
+        }
     }
 
     /**

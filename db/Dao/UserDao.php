@@ -33,6 +33,7 @@ class UserDao extends Dao
         $rand_passwd = bin2hex(random_bytes(8)); // 生成16字符的随机密码
         $user->password = password_hash($rand_passwd, PASSWORD_DEFAULT);
         $user->username = "admin";
+        $user->role = 1;
         // 插入管理员用户
         $this->insertModel($user);
         // 记录随机生成的密码，以便管理员可以登录

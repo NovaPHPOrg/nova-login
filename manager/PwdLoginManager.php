@@ -64,8 +64,10 @@ class PwdLoginManager extends BaseLoginManager
             }
 
             $mgr      = new self();
-            $redirect = Session::getInstance()->get('redirect_uri', $this->loginConfig->loginCallback);
-
+            $redirect = Session::getInstance()->get('redirect_uri', $mgr->loginConfig->loginCallback);
+            if ($redirect === "/login") {
+                $redirect = $mgr->loginConfig->loginCallback;
+            }
             // 启动会话 & 初始化表
             UserDao::getInstance()->initTable();
 
