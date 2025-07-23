@@ -167,26 +167,76 @@ class SSOLoginManager extends BaseLoginManager
 
     /**
      * 注册SSO路由处理器
-     * 用于处理SSO回调请求
+     * 用于处理SSO回调请求和SSO配置
      */
     public static function register(): void
     {
         EventManager::addListener("route.before", function ($event, &$uri) {
 
-            if (!str_starts_with($uri, "/sso/callback")) {
-                return;
+            if (str_starts_with($uri, "/sso/callback")) {
+                $sso = new SSOLoginManager();
+
+                $user =  $sso->handleCallback($_GET['code'], $_GET['state']);
+                if ($user) {
+                    LoginManager::getInstance()->login($user);
+                    $redirect = $sso->loginConfig->loginCallback;
+                    throw new AppExitException(Response::asRedirect($redirect));
+                }
+                throw new AppExitException(Response::asText("login failed"));
             }
 
-            $sso = new SSOLoginManager();
-
-            $user =  $sso->handleCallback($_GET['code'], $_GET['state']);
-            if ($user) {
-                LoginManager::getInstance()->login($user);
-                $redirect = $sso->loginConfig->loginCallback;
-                throw new AppExitException(Response::asRedirect($redirect));
+            if (str_starts_with($uri, "/sso/config")) {
+                $sso = new SSOLoginManager();
+                $response = $sso->handleSSO();
+                throw new AppExitException($response, 'Exit by SSO');
             }
-            throw new AppExitException(Response::asText("login failed"));
-
         });
+    }
+
+    const string PERMISSION_SSO = "SSO配置权限";
+    const string TPL_SSO =  ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . 'login' . DS . 'tpl' . DS."oidc";
+
+    /**
+     * 处理SSO配置请求
+     * GET请求：获取SSO配置
+     * POST请求：更新SSO配置
+     *
+     * @return Response SSO配置响应
+     */
+    private function handleSSO(): Response
+    {
+        $user = LoginManager::getInstance()->checkLogin();
+        if (!$user) {
+            return Response::asJson([
+                "code"  => 301,
+                "msg"   => $this->redirectToProvider(),
+            ]);
+        }
+        if (!$user->hasPermission(self::PERMISSION_SSO)) {
+            return  Response::asJson([
+                "code"  => 403,
+                "msg"   => "无权访问",
+            ]);
+        }
+        if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+            return Response::asJson([
+                "code"  => 200,
+                "data"  => [
+                    'ssoEnable' => $this->loginConfig->ssoEnable,
+                    'ssoProviderUrl' => $this->loginConfig->ssoProviderUrl,
+                    'ssoClientId' => $this->loginConfig->ssoClientId,
+                    'ssoClientSecret' => $this->loginConfig->ssoClientSecret,
+                ]
+            ]);
+        } else {
+            $this->loginConfig->ssoEnable = $_POST['ssoEnable'] ? boolval($_POST['ssoEnable']) : $this->loginConfig->ssoEnable;
+            $this->loginConfig->ssoProviderUrl = $_POST['ssoProviderUrl'] ?? $this->loginConfig->ssoProviderUrl;
+            $this->loginConfig->ssoClientId =  $_POST['ssoClientId'] ?? $this->loginConfig->ssoClientId;
+            $this->loginConfig->ssoClientSecret = $_POST['ssoClientSecret'] ?? $this->loginConfig->ssoClientSecret;
+            return Response::asJson([
+                "code"  => 200,
+                "msg"   => "操作成功",
+            ]);
+        }
     }
 }

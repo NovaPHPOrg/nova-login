@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\db\Model;
 
+use nova\plugin\login\db\Dao\RoleDao;
 use nova\plugin\orm\object\Model;
 
 /**
@@ -77,6 +78,35 @@ class UserModel extends Model
     public function getNoEscape(): array
     {
         return ['password'];
+    }
+
+    public function getSchemaVersion(): int
+    {
+        return 2;
+    }
+
+    public function getUpgradeSql(): array
+    {
+        return [
+            "1_2" => [
+                "ALTER TABLE `user` ADD COLUMN `role` INT NOT NULL DEFAULT 2 COMMENT '用户角色';",
+                "UPDATE `user` SET `role` = 1 WHERE id = 1;",
+                "UPDATE `user` SET `role` = 2 WHERE id <> 1;",
+            ]
+        ];
+    }
+
+    public int $role = 2;
+
+    public function getRole(): RoleModel
+    {
+        return RoleDao::getInstance()->id($this->role);
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        $role = $this->getRole();
+        return in_array($permission, $role->permissions, true) || in_array('all', $role->permissions, true);
     }
 
 }

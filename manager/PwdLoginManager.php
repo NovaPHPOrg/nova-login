@@ -68,11 +68,10 @@ class PwdLoginManager extends BaseLoginManager
             // 启动会话 & 初始化表
             UserDao::getInstance()->initTable();
 
-            /* 路由分派：5 条分支一目了然 */
+            /* 路由分派：4 条分支一目了然 */
             $response = match ($uri) {
                 '/login'              => $mgr->showLogin($redirect),
                 '/login/pwd'          => $mgr->handleLogin($_POST, $redirect),
-                '/login/sso'          => $mgr->handleSSO(),
                 '/login/captcha'      => $mgr->outputCaptcha(),     // 内部直接 exit
                 '/login/reset'        => $mgr->handleReset($_POST),
                 default               => null,
@@ -111,42 +110,7 @@ class PwdLoginManager extends BaseLoginManager
     }
 
     /** @var string 用户中心模板路径常量 */
-    const string CENTER_TPL =  ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . 'login' . DS . 'tpl' . DS."center";
-
-    /**
-     * 处理SSO相关请求
-     *
-     * GET请求：返回SSO配置信息
-     * POST请求：更新SSO配置
-     *
-     * @return Response SSO配置响应
-     */
-    private function handleSSO(): Response
-    {
-        if (!LoginManager::getInstance()->checkLogin()) {
-            return Response::asRedirect($this->redirectToProvider());
-        }
-        if ($_SERVER['REQUEST_METHOD'] == 'GET') {
-            return Response::asJson([
-                "code"  => 200,
-                "data"  => [
-                    'ssoEnable' => $this->loginConfig->ssoEnable,
-                    'ssoProviderUrl' => $this->loginConfig->ssoProviderUrl,
-                    'ssoClientId' => $this->loginConfig->ssoClientId,
-                    'ssoClientSecret' => $this->loginConfig->ssoClientSecret,
-                ]
-            ]);
-        } else {
-            $this->loginConfig->ssoEnable = $_POST['ssoEnable'] ? boolval($_POST['ssoEnable']) : $this->loginConfig->ssoEnable;
-            $this->loginConfig->ssoProviderUrl = $_POST['ssoProviderUrl'] ?? $this->loginConfig->ssoProviderUrl;
-            $this->loginConfig->ssoClientId =  $_POST['ssoClientId'] ?? $this->loginConfig->ssoClientId;
-            $this->loginConfig->ssoClientSecret = $_POST['ssoClientSecret'] ?? $this->loginConfig->ssoClientSecret;
-            return Response::asJson([
-                "code"  => 200,
-                "msg"   => "操作成功",
-            ]);
-        }
-    }
+    const string TPL_PASSWORD =  ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . 'login' . DS . 'tpl' . DS."password";
 
     /**
      * 处理登录请求
