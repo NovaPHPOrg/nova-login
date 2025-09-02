@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace nova\plugin\login\db\Dao;
 
 use nova\plugin\device\UserAgent;
-use nova\plugin\ip\IpLocation;
+use nova\plugin\ip\Ip2Region;
 use nova\plugin\login\db\Model\RecordModel;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\orm\object\Dao;
@@ -58,7 +58,8 @@ class RecordDao extends Dao
         $record->user_id = $user_id;
         $record->time = time();
         $record->ip = $_SERVER['REMOTE_ADDR'];
-        $record->addr = join(" ", IpLocation::getLocation($record->ip));
+        $ip2region = new Ip2Region();
+        $record->addr = $ip2region->simple($record->ip);
         $record->id = $this->insertModel($record);
 
         return $record;
