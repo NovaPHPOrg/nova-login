@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\db\Dao;
 
+use nova\framework\core\Context;
 use nova\plugin\device\UserAgent;
 use nova\plugin\ip\Ip2Region;
 use nova\plugin\login\db\Model\RecordModel;
@@ -57,7 +58,8 @@ class RecordDao extends Dao
         $record->device =  "$OsImg $OsName $BrowserImg $BrowserName";
         $record->user_id = $user_id;
         $record->time = time();
-        $record->ip = $_SERVER['REMOTE_ADDR'];
+        // 使用框架请求对象获取规范化后的客户端 IP（移除可能的端口）
+        $record->ip = Context::instance()->request()->getClientIP();
         $ip2region = new Ip2Region();
         $record->addr = $ip2region->simple($record->ip);
         $record->id = $this->insertModel($record);
