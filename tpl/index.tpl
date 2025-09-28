@@ -227,6 +227,7 @@
         'Event',
         'Toaster',
         'Request',
+        'Form',
         'ThemeSwitcher',
         'Language',
         'Captcha'
@@ -241,46 +242,42 @@
 </script>
 <script>
 
-    $("#form").on("submit", function (e) {
-        e.preventDefault();
-        let data = $(this).serializeObject();
-        
-        // 验证邮箱和密码是否为空
-        if (!data.username || !data.username.trim()) {
-            $.toaster.error('请输入账号');
-            return false;
-        }
-        if (!data.password || !data.password.trim()) {
-            $.toaster.error('请输入密码');
-            return false;
-        }
-
-        const submitForm = (captchaData = null) => {
-            if (captchaData) {
-                data.captcha = captchaData;
+    $.form.submit("#form", {
+        callback: function (data) {
+            if (!data.username || !data.username.trim()) {
+                $.toaster.error('请输入账号');
+                return false;
+            }
+            if (!data.password || !data.password.trim()) {
+                $.toaster.error('请输入密码');
+                return false;
             }
 
-            let loading = new Loading(document.querySelector("#form"));
-            loading.show();
-            
-            $.request.postForm("/login/pwd", data, function (response) {
-                if (response.code === 200) {
-                    $.toaster.success(response.msg);
-                    setTimeout(function () {
-                        location.href = response.data;
-                    }, 500);
-                } else {
-                    $.toaster.error(response.msg);
-                    loading.close();
+            const submitForm = (captchaData = null) => {
+                if (captchaData) {
+                    data.captcha = captchaData;
                 }
-            }, function () {
-                loading.close();
-            });
-        };
 
-        showCaptcha(submitForm);
-        
-        return false;
+                let loading = new Loading(document.querySelector("#form"));
+                loading.show();
+
+                $.request.postForm("/login/pwd", data, function (response) {
+                    if (response.code === 200) {
+                        $.toaster.success(response.msg);
+                        setTimeout(function () {
+                            location.href = response.data;
+                        }, 500);
+                    } else {
+                        $.toaster.error(response.msg);
+                        loading.close();
+                    }
+                }, function () {
+                    loading.close();
+                });
+            };
+
+            showCaptcha(submitForm);
+        }
     });
 
     function showCaptcha(submitForm) {

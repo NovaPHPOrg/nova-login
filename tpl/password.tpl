@@ -77,21 +77,22 @@
     ];
 
     window.pageOnLoad = function (loading) {
-        $.form.submit("#form_pwd",function (data) {
-            // 验证新密码和确认密码是否一致
-            if (data.new_password && data.new_password  !== data.confirm_password ) {
-                $.toaster.error('新密码和确认密码不一致');
-                return;
-            }
-
-            $.request.postForm("/login/reset",data,function (ret) {
-                if (ret.code !== 200){
-                    $.toaster.error(ret.msg);
-                }else{
-                    $.toaster.success(ret.msg);
-                    location.reload();
+        $.form.submit("#form_pwd",{
+            callback: function (data) {
+                if (data.new_password && data.new_password  !== data.confirm_password ) {
+                    $.toaster.error('新密码和确认密码不一致');
+                    return;
                 }
-            });
+
+                $.request.postForm("/login/reset",data,function (ret) {
+                    if (ret.code !== 200){
+                        $.toaster.error(ret.msg);
+                    }else{
+                        $.toaster.success(ret.msg);
+                        location.reload();
+                    }
+                });
+            }
         });
 
         window.pageOnUnLoad = function () {
