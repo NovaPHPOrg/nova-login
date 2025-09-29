@@ -212,6 +212,7 @@
 <script src="/static/framework/utils/Loader.js?v={$__v}"></script>
 <script src="/static/framework/utils/Event.js?v={$__v}"></script>
 <script src="/static/framework/utils/Toaster.js?v={$__v}"></script>
+<script src="/static/framework/utils/Form.js?v={$__v}"></script>
 <script src="/static/framework/utils/Request.js?v={$__v}"></script>
 <script src="/static/components/theme/ThemeSwitcher.js?v={$__v}"></script>
 <script src="/static/components/language/Language.js?v={$__v}"></script>
