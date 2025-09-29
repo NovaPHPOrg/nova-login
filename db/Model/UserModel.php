@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\db\Model;
 
-use nova\plugin\login\db\Dao\RoleDao;
+
 use nova\plugin\orm\object\Model;
 
 /**
@@ -82,7 +82,7 @@ class UserModel extends Model
 
     public function getSchemaVersion(): int
     {
-        return 2;
+        return 3;
     }
 
     public function getUpgradeSql(): array
@@ -92,21 +92,26 @@ class UserModel extends Model
                 "ALTER TABLE `user` ADD COLUMN `role` INT NOT NULL DEFAULT 2 COMMENT '用户角色';",
                 "UPDATE `user` SET `role` = 1 WHERE id = 1;",
                 "UPDATE `user` SET `role` = 2 WHERE id <> 1;",
-            ]
+            ],
+           
+            "2_3" => [
+                "ALTER TABLE `user` ADD COLUMN `permissions` TEXT COMMENT '用户权限数组';",
+                "UPDATE `user` SET `permissions` = 'a:1:{i:0;s:3:\"all\";}' WHERE role = 1;",
+                "UPDATE `user` SET `permissions` = 'a:0:{}' WHERE role <> 1;",
+                "ALTER TABLE `user` DROP COLUMN `role`;",
+                "DROP TABLE IF EXISTS `role`;"
+                ]
         ];
     }
 
-    public int $role = 2;
+    // 用户权限：以数组存储具体权限标识
+    public array $permissions = [];
 
-    public function getRole(): RoleModel
-    {
-        return RoleDao::getInstance()->id($this->role);
-    }
+
 
     public function hasPermission(string $permission): bool
     {
-        $role = $this->getRole();
-        return in_array($permission, $role->permissions, true) || in_array('all', $role->permissions, true);
+        return (in_array('all', $this->permissions, true) || in_array($permission, $this->permissions, true));
     }
 
 }
