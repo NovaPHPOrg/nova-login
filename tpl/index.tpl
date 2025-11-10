@@ -259,8 +259,7 @@
                     data.captcha = captchaData;
                 }
 
-                let loading = new Loading(document.querySelector("#form"));
-                loading.show();
+                $('#form').showLoading();
 
                 $.request.postForm("/login/pwd", data, function (response) {
                     if (response.code === 200) {
@@ -270,10 +269,10 @@
                         }, 500);
                     } else {
                         $.toaster.error(response.msg);
-                        loading.close();
+                        $('#form').closeLoading();
                     }
                 }, function () {
-                    loading.close();
+                    $('#form').closeLoading();
                 });
             };
 
