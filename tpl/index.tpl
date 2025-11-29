@@ -171,6 +171,7 @@
     framework/utils/Form.js,
     framework/utils/Request.js,
     framework/theme/ThemeSwitcher.js,
+    framework/language/NodeUtils.js,
     framework/language/TranslateUtils.js,
     framework/language/Language.js,
     components/captcha/Captcha.js
