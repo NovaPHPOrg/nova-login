@@ -32,9 +32,15 @@ class RecordDao extends Dao
      */
     public function records(UserModel $user): array
     {
-        return $this->select()->where([
-            'user_id' => $user->id
-        ])->commit(); //第一个是最晚的
+        // 明确排序：否则数据库默认顺序不确定，会导致“踢人/校验”表现随机
+        // 约定：返回结果按 time DESC, id DESC（最新在前）
+        return $this->select()
+            ->where([
+                'user_id' => $user->id
+            ])
+            ->orderBy('time')
+            ->orderBy('id')
+            ->commit();
     }
 
     /**

@@ -78,14 +78,17 @@ class LoginManager extends StaticRegister
             // 获取用户当前的登录记录
             $loginRecords = RecordDao::getInstance()->records($user);
 
-            // 如果登录数量超过限制，删除最早的登录记录
-            while (count($loginRecords) > $this->loginConfig->allowedLoginCount) {
-                // 获取第一个（最早）的登录记录
-                $record = array_shift($loginRecords);
-                // 从数据库中删除该记录
-                RecordDao::getInstance()->deleteModel($record);
-                // 重新获取登录记录列表
-                $loginRecords = RecordDao::getInstance()->records($user);
+            // 如果登录数量达到上限，先踢掉“最老”的记录，给本次登录腾位置
+            // 注意：RecordDao::records() 已约定返回顺序为最新在前，因此最老的是数组末尾
+            $allowed = (int)$this->loginConfig->allowedLoginCount;
+            if ($allowed < 1) {
+                $allowed = 1;
+            }
+            while (count($loginRecords) >= $allowed) {
+                $oldest = array_pop($loginRecords);
+                if ($oldest instanceof RecordModel) {
+                    RecordDao::getInstance()->deleteModel($oldest);
+                }
             }
 
             // 创建新的登录记录
@@ -120,6 +123,16 @@ class LoginManager extends StaticRegister
 
         // 验证登录记录是否有效
         if (!($record instanceof RecordModel) || RecordDao::getInstance()->id($record->id) === null) {
+            // 仅在调试模式下输出原因，方便定位“自动退出”是 Session 丢失还是 record 被删
+            if (Context::instance()->isDebug()) {
+                Logger::warning('checkLogin failed: invalid record', [
+                    'uri' => $requestUri,
+                    'session_id' => session_id(),
+                    'session_name' => session_name(),
+                    'record_type' => is_object($record) ? $record::class : gettype($record),
+                    'record_id' => ($record instanceof RecordModel) ? $record->id : null,
+                ]);
+            }
             $this->setRedirectUriIfNeeded($requestUri);
             return null;
         }
@@ -128,6 +141,12 @@ class LoginManager extends StaticRegister
         $user = $record->user();
 
         if (!$user instanceof UserModel) {
+            if (Context::instance()->isDebug()) {
+                Logger::warning('checkLogin failed: record has no user', [
+                    'uri' => $requestUri,
+                    'record_id' => $record->id,
+                ]);
+            }
             $this->setRedirectUriIfNeeded($requestUri);
             return null;
         }
