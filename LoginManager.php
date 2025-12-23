@@ -163,7 +163,9 @@ class LoginManager extends StaticRegister
 
     private function setRedirectUriIfNeeded(string $uri): void
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') return;
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            return;
+        }
         if ($uri !== "/login") {
             Session::getInstance()->set('redirect_uri', $uri);
         }

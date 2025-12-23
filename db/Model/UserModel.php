@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\db\Model;
 
-
 use nova\plugin\orm\object\Model;
 
 /**
@@ -93,21 +92,19 @@ class UserModel extends Model
                 "UPDATE `user` SET `role` = 1 WHERE id = 1;",
                 "UPDATE `user` SET `role` = 2 WHERE id <> 1;",
             ],
-           
+
             "2_3" => [
                 "ALTER TABLE `user` ADD COLUMN `permissions` TEXT COMMENT '用户权限数组';",
                 "UPDATE `user` SET `permissions` = 'a:1:{i:0;s:3:\"all\";}' WHERE role = 1;",
                 "UPDATE `user` SET `permissions` = 'a:0:{}' WHERE role <> 1;",
                 "ALTER TABLE `user` DROP COLUMN `role`;",
                 "DROP TABLE IF EXISTS `role`;"
-                ]
+            ]
         ];
     }
 
     // 用户权限：以数组存储具体权限标识
     public array $permissions = [];
-
-
 
     public function hasPermission(string $permission): bool
     {
