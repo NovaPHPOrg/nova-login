@@ -34,9 +34,7 @@ class SSOLoginManager extends BaseLoginManager
     /** @var string 授权URL */
     protected string $authorizeUrl;
     /** @var string 令牌URL */
-    protected string $tokenUrl;
     /** @var string 用户信息URL */
-    protected string $userinfoUrl;
     /** @var bool 是否必须拥有账户才能登录 */
     protected bool $mustHasAccount = true;
 
@@ -52,8 +50,6 @@ class SSOLoginManager extends BaseLoginManager
         $this->clientSecret = $this->loginConfig->ssoClientSecret;
         $this->mustHasAccount = $this->loginConfig->ssoMustHasAccount;
         $this->authorizeUrl = $this->providerUrl . '/authorize';
-        $this->tokenUrl     = $this->providerUrl . '/token';
-        $this->userinfoUrl  = $this->providerUrl . '/userinfo';
     }
 
     /**
@@ -91,14 +87,14 @@ class SSOLoginManager extends BaseLoginManager
             return null;
         }
 
-        $response = HttpClient::init($this->tokenUrl)
+        $response = HttpClient::init($this->providerUrl)
             ->post([
                 'grant_type' => 'authorization_code',
                 'code' => $code,
                 'client_id' => $this->clientId,
                 'client_secret' => $this->clientSecret,
             ], 'form')
-            ->send();
+            ->send('/token');
 
         $data = json_decode($response->getBody(), true);
         if (!isset($data['access_token'])) {
@@ -120,10 +116,10 @@ class SSOLoginManager extends BaseLoginManager
      */
     protected function fetchUserInfo(string $token): ?array
     {
-        $res = HttpClient::init($this->userinfoUrl)
+        $res = HttpClient::init($this->providerUrl)
             ->get()
             ->setHeader('Authorization', 'Bearer ' . $token)
-            ->send();
+            ->send('/userinfo');
 
         return $res->getHttpCode() === 200 ? json_decode($res->getBody(), true) : null;
     }
