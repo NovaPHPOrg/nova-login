@@ -222,13 +222,22 @@ class SSOLoginManager extends BaseLoginManager
                     'ssoProviderUrl' => $this->loginConfig->ssoProviderUrl,
                     'ssoClientId' => $this->loginConfig->ssoClientId,
                     'ssoClientSecret' => $this->loginConfig->ssoClientSecret,
+                    'ssoMustHasAccount' => $this->loginConfig->ssoMustHasAccount,
+                    'allowedLoginCount' => $this->loginConfig->allowedLoginCount,
+                    'loginCallback' => $this->loginConfig->loginCallback,
+                    'systemName' => $this->loginConfig->systemName,
                 ]
             ]);
         } else {
-            $this->loginConfig->ssoEnable = $_POST['ssoEnable'] ? boolval($_POST['ssoEnable']) : $this->loginConfig->ssoEnable;
+            $this->loginConfig->ssoEnable = isset($_POST['ssoEnable']) ? boolval($_POST['ssoEnable']) : $this->loginConfig->ssoEnable;
+            $this->loginConfig->ssoMustHasAccount = isset($_POST['ssoMustHasAccount']) ? boolval($_POST['ssoMustHasAccount']) : $this->loginConfig->ssoMustHasAccount;
             $this->loginConfig->ssoProviderUrl = $_POST['ssoProviderUrl'] ?? $this->loginConfig->ssoProviderUrl;
             $this->loginConfig->ssoClientId =  $_POST['ssoClientId'] ?? $this->loginConfig->ssoClientId;
             $this->loginConfig->ssoClientSecret = $_POST['ssoClientSecret'] ?? $this->loginConfig->ssoClientSecret;
+            $this->loginConfig->allowedLoginCount = isset($_POST['allowedLoginCount']) ? intval($_POST['allowedLoginCount']) : $this->loginConfig->allowedLoginCount;
+            $this->loginConfig->loginCallback = $_POST['loginCallback'] ?? $this->loginConfig->loginCallback;
+            $this->loginConfig->systemName = $_POST['systemName'] ?? $this->loginConfig->systemName;
+            
             return Response::asJson([
                 "code"  => 200,
                 "msg"   => "操作成功",

@@ -18,9 +18,52 @@
 
         <div class="col-xs-12">
             <form class="row col-space16" id="form_oidc">
-                <div class="col-xs-12 center-vertical">
+                <div class="col-xs-12 headline-small mb-2">基础设置</div>
+
+                <div class="col-xs-12">
+                    <mdui-text-field
+                            label="系统名称"
+                            name="systemName"
+                            type="text"
+                            variant="outlined"
+                            required
+                            helper="显示在登录页面的系统名称"
+                    ></mdui-text-field>
+                </div>
+
+                <div class="col-xs-12 col-md-6">
+                    <mdui-text-field
+                            label="允许同时登录数"
+                            name="allowedLoginCount"
+                            type="number"
+                            variant="outlined"
+                            required
+                            min="1"
+                            helper="同一账号允许同时在线的设备数量"
+                    ></mdui-text-field>
+                </div>
+
+                <div class="col-xs-12 col-md-6">
+                    <mdui-text-field
+                            label="登录成功回调"
+                            name="loginCallback"
+                            type="text"
+                            variant="outlined"
+                            required
+                            helper="登录成功后默认跳转的页面路径"
+                    ></mdui-text-field>
+                </div>
+
+                <div class="col-xs-12 headline-small mt-4 mb-2">SSO 设置</div>
+
+                <div class="col-xs-12 col-md-6 center-vertical">
                     <span class="form-item mr-2">将OIDC作为默认登录服务</span>
-                    <mdui-switch name="ssoEnable" value="0"></mdui-switch>
+                    <mdui-switch name="ssoEnable" value="1"></mdui-switch>
+                </div>
+
+                <div class="col-xs-12 col-md-6 center-vertical">
+                    <span class="form-item mr-2">必须系统里面有账户才能登录</span>
+                    <mdui-switch name="ssoMustHasAccount" value="1"></mdui-switch>
                 </div>
 
                 <div class="col-xs-12">
