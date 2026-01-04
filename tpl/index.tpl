@@ -91,7 +91,18 @@
             position: fixed;
             right: 1rem;
             bottom: 1rem;
-            z-index: 3;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .settings-fab  mdui-menu {
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+            width: unset;
+            max-width: unset;
+            min-width: unset
         }
 
         .hitokoto-container {
@@ -147,13 +158,15 @@
         </div>
     </div>
 
-    <mdui-dropdown class="settings-fab">
-        <mdui-fab icon="settings" slot="trigger"></mdui-fab>
-        <mdui-menu>
-            <theme-switcher class="mb-2"></theme-switcher>
-            <lang-switcher></lang-switcher>
-        </mdui-menu>
-    </mdui-dropdown>
+    <div class="settings-fab">
+        <mdui-dropdown>
+            <mdui-fab icon="settings" slot="trigger"></mdui-fab>
+            <mdui-menu>
+                <theme-switcher class="mb-2"></theme-switcher>
+                <lang-switcher></lang-switcher>
+            </mdui-menu>
+        </mdui-dropdown>
+    </div>
 
     <div class="hitokoto-container" id="hitokotoContainer">
         <p id="hitokoto"></p>
