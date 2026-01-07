@@ -237,7 +237,7 @@ class SSOLoginManager extends BaseLoginManager
             $this->loginConfig->allowedLoginCount = isset($_POST['allowedLoginCount']) ? intval($_POST['allowedLoginCount']) : $this->loginConfig->allowedLoginCount;
             $this->loginConfig->loginCallback = $_POST['loginCallback'] ?? $this->loginConfig->loginCallback;
             $this->loginConfig->systemName = $_POST['systemName'] ?? $this->loginConfig->systemName;
-            
+
             return Response::asJson([
                 "code"  => 200,
                 "msg"   => "操作成功",
