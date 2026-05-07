@@ -267,6 +267,7 @@
         // 每30秒更新一次一言
         setInterval(fetchHitokoto, 30000);
         fetchHitokoto();
+        window.mainAppLoading.close();
     </script>
 </body>
 </html>
