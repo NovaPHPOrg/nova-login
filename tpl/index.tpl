@@ -5,18 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no"/>
     <meta name="renderer" content="webkit"/>
     <title>{$title} - 登录</title>
-    <link rel="preconnect" href="https://fonts.loli.net">
-    <link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
-    <!-- 使用 font-display=swap 避免字体加载时的布局偏移 -->
-    <link href="https://fonts.loli.net/css2?family=Material+Icons&family=Material+Icons+Outlined&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="/static/bundle?file=
-    framework/libs/mdui.css,
-    framework/base.css,
-    framework/utils/Loading.css
-    &type=css&v={$__v}">
+    <link rel="stylesheet" href="/static/bundle?file=framework/icons/fonts.css,framework/libs/mdui.css,framework/base.css,framework/utils/Loading.css&type=css&v={$__v}">
 
     <style>
+        :root {
+            /* 夜间：黑色遮罩深一点 */
+            --login-overlay: rgba(0, 0, 0, 0.58);
+            /* 遮罩上的文字：固定使用浅色主题 on 色，保证黑底可读 */
+            --login-overlay-on: rgba(var(--mdui-color-on-primary-light), 0.88);
+        }
+
+        .mdui-theme-light {
+            /* 白天：黑色遮罩浅一点 */
+            --login-overlay: rgba(0, 0, 0, 0.38);
+        }
+
+        .mdui-theme-dark {
+            --login-overlay: rgba(0, 0, 0, 0.58);
+        }
+
+        @media (prefers-color-scheme: light) {
+            .mdui-theme-auto {
+                --login-overlay: rgba(0, 0, 0, 0.38);
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .mdui-theme-auto {
+                --login-overlay: rgba(0, 0, 0, 0.58);
+            }
+        }
+
         body {
             background-image: url('https://api.ankio.net/bing');
             background-size: cover;
@@ -30,22 +50,9 @@
             content: '';
             position: fixed;
             inset: 0;
-            background: var(--overlay-color);
+            background: var(--login-overlay);
             pointer-events: none;
-        }
-
-        :root {
-            --overlay-color: rgba(0, 0, 0, 0.5);
-        }
-
-        .mdui-theme-light {
-            --overlay-color: rgba(191, 191, 191, 0.3);
-        }
-
-        @media (prefers-color-scheme: light) {
-            .mdui-theme-auto {
-                --overlay-color: rgba(191, 191, 191, 0.3);
-            }
+            z-index: 1;
         }
 
         .login-container {
@@ -72,10 +79,13 @@
             font-size: 1.5rem;
         }
 
+        .login-overlay-text {
+            color: var(--login-overlay-on);
+        }
+
         .copyright {
             margin-top: 1rem;
             font-size: 0.875rem;
-            color: rgba(var(--mdui-color-on-background), 0.8);
             text-align: center;
         }
 
@@ -114,7 +124,6 @@
             padding: 10px;
             max-width: 90%;
             text-align: center;
-            color: rgba(var(--mdui-color-on-background), 0.8);
             z-index: 3;
             opacity: 0;
             transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
@@ -154,7 +163,7 @@
 
         <nova-captcha></nova-captcha>
 
-        <div class="copyright">
+        <div class="copyright login-overlay-text">
             <p>© {date('Y')} <a href="https://ankio.net" target="_blank">Ankio</a>. All rights reserved.</p>
         </div>
     </div>
@@ -169,7 +178,7 @@
         </mdui-dropdown>
     </div>
 
-    <div class="hitokoto-container" id="hitokotoContainer">
+    <div class="hitokoto-container login-overlay-text" id="hitokotoContainer">
         <p id="hitokoto"></p>
     </div>
 
