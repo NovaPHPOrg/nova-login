@@ -20,4 +20,8 @@ class LoginConfig extends ConfigObject
     public string $ssoClientId       = '';
     public string $ssoClientSecret   = '';
     public bool   $ssoMustHasAccount = true;
+    public string $ssoUserField = 'username';
+    public string $ssoUserInfoUrl = '/userinfo';
+    public string $ssoDisplayNameField = 'nickname';
+    public string $ssoAvatarField = 'avatar_url';
 }

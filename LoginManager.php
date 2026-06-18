@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace nova\plugin\login;
 
+use Exception;
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
 use nova\framework\core\StaticRegister;
@@ -13,6 +14,7 @@ use nova\plugin\login\db\Model\RecordModel;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\manager\PwdLoginManager;
 use nova\plugin\login\manager\SSOLoginManager;
+use Throwable;
 
 /**
  * 登录管理器
@@ -98,7 +100,7 @@ class LoginManager extends StaticRegister
             Session::getInstance()->set('record', $record);
             Session::getInstance()->set('user', $user);
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // 记录错误日志
             Logger::error($e->getMessage(), $e->getTrace());
             return false;
@@ -192,7 +194,7 @@ class LoginManager extends StaticRegister
                 $dao->deleteModel($record);
             }
             return true;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // 记录错误日志
             Logger::error($e->getMessage(), $e->getTrace());
             return false;
@@ -200,6 +202,12 @@ class LoginManager extends StaticRegister
             // 无论成功还是失败，都只在这里销毁session
             $session->destroy();
         }
+    }
+
+
+    public function getConfig(): LoginConfig
+    {
+        return $this->loginConfig;
     }
 
     /**

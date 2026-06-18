@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace nova\plugin\login\manager;
 
 use nova\plugin\login\LoginConfig;
+use nova\plugin\login\LoginManager;
 
 /**
  * 登录管理器基类
@@ -33,7 +34,7 @@ abstract class BaseLoginManager
      */
     public function __construct()
     {
-        $this->loginConfig = new LoginConfig();
+        $this->loginConfig = LoginManager::getInstance()->getConfig();
     }
 
     /**

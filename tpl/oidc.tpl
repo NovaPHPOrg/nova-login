@@ -77,6 +77,50 @@
                     ></mdui-text-field>
                 </div>
 
+                <div class="col-xs-12">
+                    <mdui-text-field
+                            label="用户唯一标识字段"
+                            name="ssoUserField"
+                            type="text"
+                            variant="outlined"
+                            required
+                            helper="SSO返回的用户信息中用于匹配系统账号的字段，默认为username"
+                    ></mdui-text-field>
+                </div>
+
+                <div class="col-xs-12">
+                    <mdui-text-field
+                            label="获取用户信息URL"
+                            name="ssoUserInfoUrl"
+                            type="text"
+                            variant="outlined"
+                            required
+                            helper="SSO提供的获取用户信息接口路径，默认为/userinfo"
+                    ></mdui-text-field>
+                </div>
+
+                <div class="col-xs-12 col-md-6">
+                    <mdui-text-field
+                            label="用户名称字段"
+                            name="ssoDisplayNameField"
+                            type="text"
+                            variant="outlined"
+                            required
+                            helper="SSO返回的用户信息中作为显示名称的字段，默认为nickname"
+                    ></mdui-text-field>
+                </div>
+
+                <div class="col-xs-12 col-md-6">
+                    <mdui-text-field
+                            label="用户头像字段"
+                            name="ssoAvatarField"
+                            type="text"
+                            variant="outlined"
+                            required
+                            helper="SSO返回的用户信息中作为头像URL的字段，默认为avatar_url"
+                    ></mdui-text-field>
+                </div>
+
                 <div class="col-xs-12 col-md-6">
                     <mdui-text-field
                             label="客户端ID"

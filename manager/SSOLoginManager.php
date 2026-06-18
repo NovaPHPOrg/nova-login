@@ -8,9 +8,6 @@ use nova\framework\core\Context;
 use nova\framework\event\EventManager;
 use nova\framework\exception\AppExitException;
 use nova\framework\http\Response;
-
-use function nova\framework\uuid;
-
 use nova\plugin\avatar\Avatar;
 use nova\plugin\cookie\Session;
 use nova\plugin\http\HttpClient;
@@ -18,6 +15,7 @@ use nova\plugin\http\HttpException;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\LoginManager;
+use function nova\framework\uuid;
 
 /**
  * SSO单点登录管理器
@@ -37,6 +35,14 @@ class SSOLoginManager extends BaseLoginManager
     /** @var string 用户信息URL */
     /** @var bool 是否必须拥有账户才能登录 */
     protected bool $mustHasAccount = true;
+    /** @var string 用户标识字段 */
+    protected string $userField = 'username';
+    /** @var string 用户信息URL */
+    protected string $userInfoUrl = '/userinfo';
+    /** @var string 用户显示名称字段 */
+    protected string $displayNameField = 'nickname';
+    /** @var string 用户头像字段 */
+    protected string $avatarField = 'avatar_url';
 
     /**
      * 构造函数
@@ -49,7 +55,13 @@ class SSOLoginManager extends BaseLoginManager
         $this->clientId     = $this->loginConfig->ssoClientId;
         $this->clientSecret = $this->loginConfig->ssoClientSecret;
         $this->mustHasAccount = $this->loginConfig->ssoMustHasAccount;
+        $this->userField = $this->loginConfig->ssoUserField;
+        $this->userInfoUrl = $this->loginConfig->ssoUserInfoUrl;
+        $this->displayNameField = $this->loginConfig->ssoDisplayNameField;
+        $this->avatarField = $this->loginConfig->ssoAvatarField;
         $this->authorizeUrl = $this->providerUrl . '/authorize';
+
+
     }
 
     /**
@@ -93,6 +105,7 @@ class SSOLoginManager extends BaseLoginManager
                 'code' => $code,
                 'client_id' => $this->clientId,
                 'client_secret' => $this->clientSecret,
+                'redirect_uri' => Context::instance()->request()->getBasicAddress() . "/sso/callback",
             ], 'form')
             ->send('/token');
 
@@ -102,7 +115,7 @@ class SSOLoginManager extends BaseLoginManager
         }
 
         $userInfo = $this->fetchUserInfo($data['access_token']);
-        if (!$userInfo || !isset($userInfo['username'])) {
+        if (!$userInfo || !isset($userInfo[$this->userField])) {
             return null;
         }
         return $this->findOrCreateUser($userInfo);
@@ -119,7 +132,7 @@ class SSOLoginManager extends BaseLoginManager
         $res = HttpClient::init($this->providerUrl)
             ->get()
             ->setHeader('Authorization', 'Bearer ' . $token)
-            ->send('/userinfo');
+            ->send($this->userInfoUrl);
 
         return $res->getHttpCode() === 200 ? json_decode($res->getBody(), true) : null;
     }
@@ -132,10 +145,11 @@ class SSOLoginManager extends BaseLoginManager
     protected function findOrCreateUser(array $info): ?UserModel
     {
         $dao = UserDao::getInstance();
-        $user = $dao->username($info['username']);
+        $username = $info[$this->userField];
+        $user = $dao->username($username);
         if ($user) {
-            $user->display_name = $info['nickname'] ?? $info['username'];
-            $user->avatar = $info['avatar_url'] ?? $user->avatar;
+            $user->display_name = $info[$this->displayNameField] ?? $username;
+            $user->avatar = $info[$this->avatarField] ?? $user->avatar;
             return $user;
         }
 
@@ -144,10 +158,10 @@ class SSOLoginManager extends BaseLoginManager
         }
 
         $user = new UserModel();
-        $user->display_name = $info['nickname'] ?? $info['username'];
+        $user->display_name = $info[$this->displayNameField] ?? $username;
         $user->password = password_hash(uuid(), PASSWORD_DEFAULT);
-        $user->username = $info['username'];
-        $user->avatar = $info['avatar_url'] ?? Avatar::toBase64(Avatar::svg($info['username']));
+        $user->username = $username;
+        $user->avatar = $info[$this->avatarField] ?? Avatar::toBase64(Avatar::svg($username));
         $dao->insertModel($user);
         return $user;
     }
@@ -182,6 +196,7 @@ class SSOLoginManager extends BaseLoginManager
             }
 
             if (str_starts_with($uri, "/sso/config")) {
+
                 $sso = new SSOLoginManager();
                 $response = $sso->handleSSO();
                 throw new AppExitException($response, 'Exit by SSO');
@@ -201,6 +216,7 @@ class SSOLoginManager extends BaseLoginManager
      */
     private function handleSSO(): Response
     {
+
         $user = LoginManager::getInstance()->checkLogin();
         if (!$user) {
             return Response::asJson([
@@ -223,20 +239,30 @@ class SSOLoginManager extends BaseLoginManager
                     'ssoClientId' => $this->loginConfig->ssoClientId,
                     'ssoClientSecret' => $this->loginConfig->ssoClientSecret,
                     'ssoMustHasAccount' => $this->loginConfig->ssoMustHasAccount,
+                    'ssoUserField' => $this->loginConfig->ssoUserField,
+                    'ssoUserInfoUrl' => $this->loginConfig->ssoUserInfoUrl,
+                    'ssoDisplayNameField' => $this->loginConfig->ssoDisplayNameField,
+                    'ssoAvatarField' => $this->loginConfig->ssoAvatarField,
                     'allowedLoginCount' => $this->loginConfig->allowedLoginCount,
                     'loginCallback' => $this->loginConfig->loginCallback,
                     'systemName' => $this->loginConfig->systemName,
                 ]
             ]);
         } else {
+
             $this->loginConfig->ssoEnable = isset($_POST['ssoEnable']) ? boolval($_POST['ssoEnable']) : $this->loginConfig->ssoEnable;
             $this->loginConfig->ssoMustHasAccount = isset($_POST['ssoMustHasAccount']) ? boolval($_POST['ssoMustHasAccount']) : $this->loginConfig->ssoMustHasAccount;
             $this->loginConfig->ssoProviderUrl = $_POST['ssoProviderUrl'] ?? $this->loginConfig->ssoProviderUrl;
             $this->loginConfig->ssoClientId =  $_POST['ssoClientId'] ?? $this->loginConfig->ssoClientId;
             $this->loginConfig->ssoClientSecret = $_POST['ssoClientSecret'] ?? $this->loginConfig->ssoClientSecret;
+            $this->loginConfig->ssoUserField = $_POST['ssoUserField'] ?? $this->loginConfig->ssoUserField;
+            $this->loginConfig->ssoUserInfoUrl = $_POST['ssoUserInfoUrl'] ?? $this->loginConfig->ssoUserInfoUrl;
+            $this->loginConfig->ssoDisplayNameField = $_POST['ssoDisplayNameField'] ?? $this->loginConfig->ssoDisplayNameField;
+            $this->loginConfig->ssoAvatarField = $_POST['ssoAvatarField'] ?? $this->loginConfig->ssoAvatarField;
             $this->loginConfig->allowedLoginCount = isset($_POST['allowedLoginCount']) ? intval($_POST['allowedLoginCount']) : $this->loginConfig->allowedLoginCount;
             $this->loginConfig->loginCallback = $_POST['loginCallback'] ?? $this->loginConfig->loginCallback;
             $this->loginConfig->systemName = $_POST['systemName'] ?? $this->loginConfig->systemName;
+
 
             return Response::asJson([
                 "code"  => 200,
