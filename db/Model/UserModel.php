@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\db\Model;
 
+use nova\plugin\login\db\Dao\RoleDao;
 use nova\plugin\orm\object\Model;
 
 /**
@@ -81,7 +82,7 @@ class UserModel extends Model
 
     public function getSchemaVersion(): int
     {
-        return 3;
+        return 4;
     }
 
     public function getUpgradeSql(): array
@@ -99,6 +100,17 @@ class UserModel extends Model
                 "UPDATE `user` SET `permissions` = 'a:0:{}' WHERE role <> 1;",
                 "ALTER TABLE `user` DROP COLUMN `role`;",
                 "DROP TABLE IF EXISTS `role`;"
+            ],
+
+            "3_4" => [
+                "ALTER TABLE `user` ADD COLUMN `roles` TEXT COMMENT '用户角色ID数组';",
+                "CREATE TABLE IF NOT EXISTS `role` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `name` VARCHAR(100) NOT NULL COMMENT '角色名称',
+                    `permissions` TEXT COMMENT '权限标识数组',
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `name` (`name`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';",
             ]
         ];
     }
@@ -106,9 +118,33 @@ class UserModel extends Model
     // 用户权限：以数组存储具体权限标识
     public array $permissions = [];
 
+    /**
+     * 用户所属角色 ID 数组
+     * @var array
+     */
+    public array $roles = [];
+
     public function hasPermission(string $permission): bool
     {
-        return (in_array('all', $this->permissions, true) || in_array($permission, $this->permissions, true));
+        if (in_array('all', $this->permissions, true)) {
+            return true;
+        }
+
+        if (in_array($permission, $this->permissions, true)) {
+            return true;
+        }
+
+        // 检查角色权限
+        if (!empty($this->roles)) {
+            foreach ($this->roles as $roleId) {
+                $role = RoleDao::getInstance()->id((int)$roleId);
+                if ($role && (in_array('all', $role->permissions, true) || in_array($permission, $role->permissions, true))) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
 }

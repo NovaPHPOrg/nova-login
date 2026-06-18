@@ -8,10 +8,15 @@ use Exception;
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
 use nova\framework\core\StaticRegister;
+use nova\framework\event\EventManager;
+use nova\framework\exception\AppExitException;
+use nova\framework\http\Response;
+use nova\framework\route\Route;
 use nova\plugin\cookie\Session;
 use nova\plugin\login\db\Dao\RecordDao;
 use nova\plugin\login\db\Model\RecordModel;
 use nova\plugin\login\db\Model\UserModel;
+use nova\plugin\login\manager\PermissionManager;
 use nova\plugin\login\manager\PwdLoginManager;
 use nova\plugin\login\manager\SSOLoginManager;
 use Throwable;
@@ -36,6 +41,58 @@ class LoginManager extends StaticRegister
     {
         SSOLoginManager::register();
         PwdLoginManager::register();
+
+        EventManager::getInstance()->on('app.start', function ($request) {
+            self::getInstance()->onAppStart($request);
+        });
+
+        // 注册 RBAC 管理路由
+        $route = Route::getInstance();
+        $route->get('/login/admin_user/list', route('login', 'nova\plugin\login\controller\AdminUser', 'list'));
+        $route->post('/login/admin_user/save', route('login', 'nova\plugin\login\controller\AdminUser', 'save'));
+        $route->post('/login/admin_user/remove', route('login', 'nova\plugin\login\controller\AdminUser', 'remove'));
+
+        $route->get('/login/admin_role/list', route('login', 'nova\plugin\login\controller\AdminRole', 'list'));
+        $route->post('/login/admin_role/save', route('login', 'nova\plugin\login\controller\AdminRole', 'save'));
+        $route->post('/login/admin_role/remove', route('login', 'nova\plugin\login\controller\AdminRole', 'remove'));
+        $route->get('/login/admin_role/all', route('login', 'nova\plugin\login\controller\AdminRole', 'all'));
+        $route->get('/login/admin_role/permissions', route('login', 'nova\plugin\login\controller\AdminRole', 'permissions'));
+    }
+
+    /**
+     * 应用启动时的钩子，用于权限检查
+     */
+    public function onAppStart($request): void
+    {
+        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $uri = Route::getInstance()->getUri();
+
+        $pm = PermissionManager::getInstance();
+        if ($pm->isWhitelisted($method, $uri)) {
+            return;
+        }
+
+        $user = $this->checkLogin();
+        if (!$user) {
+            $redirect = $this->redirectLogin();
+            if ($this->isAjaxRequest()) {
+                throw new AppExitException(Response::asJson(['code' => 401, 'msg' => '请先登录', 'redirect' => $redirect], 401));
+            }
+            throw new AppExitException(Response::redirect($redirect));
+        }
+
+        if (!$pm->check($method, $uri, $user->permissions, $user->roles)) {
+            if ($this->isAjaxRequest()) {
+                throw new AppExitException(Response::asJson(['code' => 403, 'msg' => '权限不足'], 403));
+            }
+            throw new AppExitException(Response::asHtml('<h1>403 Forbidden</h1><p>你没有权限访问此页面。</p>', [], 403));
+        }
+    }
+
+    private function isAjaxRequest(): bool
+    {
+        return isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest'
+            || str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json');
     }
 
     /**
