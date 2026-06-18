@@ -63,7 +63,7 @@ class PwdLoginManager extends BaseLoginManager
                 return;
             }
 
-            $mgr      = new self();
+            $mgr = new self();
             $redirect = Session::getInstance()->get('redirect_uri', $mgr->loginConfig->loginCallback);
             if ($redirect === "/login") {
                 $redirect = $mgr->loginConfig->loginCallback;
@@ -73,14 +73,15 @@ class PwdLoginManager extends BaseLoginManager
 
             /* 路由分派：4 条分支一目了然 */
             $response = match ($uri) {
-                '/login'              => $mgr->showLogin($redirect),
-                '/login/pwd'          => $mgr->handleLogin($_POST, $redirect),
-                '/login/captcha'      => $mgr->outputCaptcha(),     // 内部直接 exit
-                '/login/reset'        => $mgr->handleReset($_POST),
-                default               => null,
+                '/login' => $mgr->showLogin($redirect),
+                '/login/pwd' => $mgr->handleLogin($_POST, $redirect),
+                '/login/captcha' => $mgr->outputCaptcha(),     // 内部直接 exit
+                '/login/reset' => $mgr->handleReset($_POST),
+                default => null,
             };
 
-            throw new AppExitException($response, 'Exit by Login');
+            if ($response !== null)
+                throw new AppExitException($response, 'Exit by Login');
         });
     }
 
@@ -91,7 +92,7 @@ class PwdLoginManager extends BaseLoginManager
     /**
      * 显示登录页面
      *
-     * @param  string   $redirect 登录成功后的重定向地址
+     * @param string $redirect 登录成功后的重定向地址
      * @return Response 登录页面响应或重定向响应
      */
     private function showLogin(string $redirect): Response
@@ -113,13 +114,13 @@ class PwdLoginManager extends BaseLoginManager
     }
 
     /** @var string 用户中心模板路径常量 */
-    const string TPL_PASSWORD =  ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . 'login' . DS . 'tpl' . DS."password";
+    const string TPL_PASSWORD = ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . 'login' . DS . 'tpl' . DS . "password";
 
     /**
      * 处理登录请求
      *
-     * @param  array    $post     POST请求数据
-     * @param  string   $redirect 登录成功后的重定向地址
+     * @param array $post POST请求数据
+     * @param string $redirect 登录成功后的重定向地址
      * @return Response 登录结果响应
      */
     private function handleLogin(array $post, string $redirect): Response
@@ -147,7 +148,7 @@ class PwdLoginManager extends BaseLoginManager
     /**
      * 处理密码重置请求
      *
-     * @param  array    $post POST请求数据
+     * @param array $post POST请求数据
      * @return Response 重置结果响应
      */
     private function handleReset(array $post): Response
@@ -169,9 +170,9 @@ class PwdLoginManager extends BaseLoginManager
     /**
      * 生成JSON响应
      *
-     * @param  int      $code  响应状态码
-     * @param  string   $msg   响应消息
-     * @param  array    $extra 额外数据
+     * @param int $code 响应状态码
+     * @param string $msg 响应消息
+     * @param array $extra 额外数据
      * @return Response JSON响应对象
      */
     private function json(int $code, string $msg, array $extra = []): Response
@@ -191,7 +192,7 @@ class PwdLoginManager extends BaseLoginManager
      * - 用户名密码验证
      * - 记录登录失败日志
      *
-     * @param  array           $credentials 登录凭据数组，包含 username、password、captcha
+     * @param array $credentials 登录凭据数组，包含 username、password、captcha
      * @return UserModel|false 认证成功返回用户模型，失败返回false
      */
     public function authenticate(array $credentials): UserModel|false
@@ -201,7 +202,7 @@ class PwdLoginManager extends BaseLoginManager
         }
 
         if (!Captcha::verify((int)$credentials['captcha'])) {
-            Logger::warning($credentials['username']." 登录失败，验证码错误", $credentials);
+            Logger::warning($credentials['username'] . " 登录失败，验证码错误", $credentials);
             return false;
         }
 
@@ -214,7 +215,7 @@ class PwdLoginManager extends BaseLoginManager
             return $user;
         }
 
-        Logger::warning($credentials['username']." 登录失败，密码错误", $credentials);
+        Logger::warning($credentials['username'] . " 登录失败，密码错误", $credentials);
         return false;
     }
 
@@ -237,8 +238,8 @@ class PwdLoginManager extends BaseLoginManager
      * - 用户名格式验证（5-10位字母数字）
      * - 用户名唯一性检查
      *
-     * @param  array     $data 重置数据，包含 current_password、new_password、username
-     * @param  UserModel $user 当前用户模型
+     * @param array $data 重置数据，包含 current_password、new_password、username
+     * @param UserModel $user 当前用户模型
      * @return bool      重置成功返回true，失败返回false
      */
     private function reset(array $data, UserModel $user): bool
@@ -251,7 +252,7 @@ class PwdLoginManager extends BaseLoginManager
         if ($userDao->login($user->username, $data['current_password']) === null) {
             Logger::warning('密码重置失败 - 当前密码无效', [
                 'user_id' => $user->id,
-                'ip'      => Context::instance()->request()->getClientIP(),
+                'ip' => Context::instance()->request()->getClientIP(),
             ]);
             return false;
         }
