@@ -55,12 +55,10 @@ class RecordModel extends Model
     /**
      * 获取关联的用户信息
      *
-     * 根据当前记录的user_id获取对应的用户模型对象
-     *
      * @return UserModel|null 返回用户模型对象，如果用户不存在则返回null
      */
     public function user(): ?UserModel
     {
-        return UserDAO::getInstance()->id($this->user_id);
+        return UserDao::getInstance()->id($this->user_id);
     }
 }

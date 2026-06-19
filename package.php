@@ -10,13 +10,20 @@
 
 declare(strict_types=1);
 
+/**
+ * 登录模块包配置
+ *
+ * @package nova\plugin\login
+ * @since 1.0.0
+ */
+
 return [
     "config" => [
         "framework_start" => [
             "nova\\plugin\\login\\LoginManager",
-        ]
+        ],
     ],
     "require" => [
-        "tpl","captcha","avatar","http","device","ip"
+        "tpl", "captcha", "avatar", "http", "device", "ip",
     ],
 ];

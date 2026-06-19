@@ -4,6 +4,7 @@
         display: flex;
         justify-content: flex-end;
     }
+
     mdui-card {
         width: 100%;
     }
@@ -22,35 +23,35 @@
 
                 <div class="col-xs-12">
                     <mdui-text-field
-                            label="系统名称"
-                            name="systemName"
-                            type="text"
-                            variant="outlined"
-                            required
-                            helper="显示在登录页面的系统名称"
+                        label="系统名称"
+                        name="systemName"
+                        type="text"
+                        variant="outlined"
+                        required
+                        helper="显示在登录页面的系统名称"
                     ></mdui-text-field>
                 </div>
 
                 <div class="col-xs-12 col-md-6">
                     <mdui-text-field
-                            label="允许同时登录数"
-                            name="allowedLoginCount"
-                            type="number"
-                            variant="outlined"
-                            required
-                            min="1"
-                            helper="同一账号允许同时在线的设备数量"
+                        label="允许同时登录数"
+                        name="allowedLoginCount"
+                        type="number"
+                        variant="outlined"
+                        required
+                        min="1"
+                        helper="同一账号允许同时在线的设备数量"
                     ></mdui-text-field>
                 </div>
 
                 <div class="col-xs-12 col-md-6">
                     <mdui-text-field
-                            label="登录成功回调"
-                            name="loginCallback"
-                            type="text"
-                            variant="outlined"
-                            required
-                            helper="登录成功后默认跳转的页面路径"
+                        label="登录成功回调"
+                        name="loginCallback"
+                        type="text"
+                        variant="outlined"
+                        required
+                        helper="登录成功后默认跳转的页面路径"
                     ></mdui-text-field>
                 </div>
 
@@ -68,74 +69,74 @@
 
                 <div class="col-xs-12">
                     <mdui-text-field
-                            label="OIDC提供者"
-                            name="ssoProviderUrl"
-                            type="text"
-                            variant="outlined"
-                            required
-                            helper="类似于https://xx.xx.xx"
+                        label="OIDC提供者"
+                        name="ssoProviderUrl"
+                        type="text"
+                        variant="outlined"
+                        required
+                        helper="类似于https://xx.xx.xx"
                     ></mdui-text-field>
                 </div>
 
                 <div class="col-xs-12">
                     <mdui-text-field
-                            label="用户唯一标识字段"
-                            name="ssoUserField"
-                            type="text"
-                            variant="outlined"
-                            required
-                            helper="SSO返回的用户信息中用于匹配系统账号的字段，默认为username"
+                        label="用户唯一标识字段"
+                        name="ssoUserField"
+                        type="text"
+                        variant="outlined"
+                        required
+                        helper="SSO返回的用户信息中用于匹配系统账号的字段，默认为username"
                     ></mdui-text-field>
                 </div>
 
                 <div class="col-xs-12">
                     <mdui-text-field
-                            label="获取用户信息URL"
-                            name="ssoUserInfoUrl"
-                            type="text"
-                            variant="outlined"
-                            required
-                            helper="SSO提供的获取用户信息接口路径，默认为/userinfo"
+                        label="获取用户信息URL"
+                        name="ssoUserInfoUrl"
+                        type="text"
+                        variant="outlined"
+                        required
+                        helper="SSO提供的获取用户信息接口路径，默认为/userinfo"
                     ></mdui-text-field>
                 </div>
 
                 <div class="col-xs-12 col-md-6">
                     <mdui-text-field
-                            label="用户名称字段"
-                            name="ssoDisplayNameField"
-                            type="text"
-                            variant="outlined"
-                            required
-                            helper="SSO返回的用户信息中作为显示名称的字段，默认为nickname"
+                        label="用户名称字段"
+                        name="ssoDisplayNameField"
+                        type="text"
+                        variant="outlined"
+                        required
+                        helper="SSO返回的用户信息中作为显示名称的字段，默认为nickname"
                     ></mdui-text-field>
                 </div>
 
                 <div class="col-xs-12 col-md-6">
                     <mdui-text-field
-                            label="用户头像字段"
-                            name="ssoAvatarField"
-                            type="text"
-                            variant="outlined"
-                            required
-                            helper="SSO返回的用户信息中作为头像URL的字段，默认为avatar_url"
+                        label="用户头像字段"
+                        name="ssoAvatarField"
+                        type="text"
+                        variant="outlined"
+                        required
+                        helper="SSO返回的用户信息中作为头像URL的字段，默认为avatar_url"
                     ></mdui-text-field>
                 </div>
 
                 <div class="col-xs-12 col-md-6">
                     <mdui-text-field
-                            label="客户端ID"
-                            name="ssoClientId"
-                            type="text"
-                            variant="outlined"
+                        label="客户端ID"
+                        name="ssoClientId"
+                        type="text"
+                        variant="outlined"
                     ></mdui-text-field>
                 </div>
 
                 <div class="col-xs-12 col-md-6">
                     <mdui-text-field
-                            label="客户端密钥"
-                            name="ssoClientSecret"
-                            type="password"
-                            variant="outlined"
+                        label="客户端密钥"
+                        name="ssoClientSecret"
+                        type="password"
+                        variant="outlined"
                     ></mdui-text-field>
                 </div>
 
@@ -149,16 +150,4 @@
     </div>
 </div>
 
-<script id="script">
-    window.pageLoadFiles = [
-        'Form',
-    ];
-
-    window.pageOnLoad = function (loading) {
-        $.form.manage("/sso/config","#form_oidc");
-
-        window.pageOnUnLoad = function () {
-            // 页面卸载时的清理工作
-        };
-    };
-</script> 
+<script id="script" src="/login/static/js/oidc.js?v={$__v}"></script>

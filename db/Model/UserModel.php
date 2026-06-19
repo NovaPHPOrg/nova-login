@@ -55,6 +55,13 @@ class UserModel extends Model
     public string $avatar = '';
 
     /**
+     * 用户角色ID
+     *
+     * @var int
+     */
+    public int $role = 0;
+
+    /**
      * 获取模型的唯一字段
      *
      * 返回用于标识记录唯一性的字段数组
@@ -64,7 +71,7 @@ class UserModel extends Model
      */
     public function getUnique(): array
     {
-        return ['username']; // 用户名是唯一的标识符
+        return ['username'];
     }
 
     /**
@@ -80,11 +87,21 @@ class UserModel extends Model
         return ['password'];
     }
 
+    /**
+     * 获取表结构版本号
+     *
+     * @return int 表结构版本号
+     */
     public function getSchemaVersion(): int
     {
         return 4;
     }
 
+    /**
+     * 获取表结构升级SQL
+     *
+     * @return array 包含各版本升级SQL的数组
+     */
     public function getUpgradeSql(): array
     {
         return [
@@ -103,48 +120,23 @@ class UserModel extends Model
             ],
 
             "3_4" => [
-                "ALTER TABLE `user` ADD COLUMN `roles` TEXT COMMENT '用户角色ID数组';",
-                "CREATE TABLE IF NOT EXISTS `role` (
-                    `id` INT NOT NULL AUTO_INCREMENT,
-                    `name` VARCHAR(100) NOT NULL COMMENT '角色名称',
-                    `permissions` TEXT COMMENT '权限标识数组',
-                    PRIMARY KEY (`id`),
-                    UNIQUE KEY `name` (`name`)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';",
+                "ALTER TABLE `user` ADD COLUMN `role` TEXT COMMENT '用户角色ID数组';",
+                "UPDATE `user` SET `role` = 1 WHERE id = 1;",
             ]
         ];
     }
 
-    // 用户权限：以数组存储具体权限标识
-    public array $permissions = [];
-
     /**
-     * 用户所属角色 ID 数组
-     * @var array
+     * 获取用户角色信息
+     *
+     * @return RoleModel 角色模型对象
      */
-    public array $roles = [];
-
-    public function hasPermission(string $permission): bool
+    public function role(): RoleModel
     {
-        if (in_array('all', $this->permissions, true)) {
-            return true;
+        $role = RoleDao::getInstance()->id($this->role);
+        if (empty($role)) {
+            return new RoleModel();
         }
-
-        if (in_array($permission, $this->permissions, true)) {
-            return true;
-        }
-
-        // 检查角色权限
-        if (!empty($this->roles)) {
-            foreach ($this->roles as $roleId) {
-                $role = RoleDao::getInstance()->id((int)$roleId);
-                if ($role && (in_array('all', $role->permissions, true) || in_array($permission, $role->permissions, true))) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return $role;
     }
-
 }

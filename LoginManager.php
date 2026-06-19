@@ -5,144 +5,113 @@ declare(strict_types=1);
 namespace nova\plugin\login;
 
 use Exception;
-use nova\framework\core\Context;
 use nova\framework\core\Logger;
 use nova\framework\core\StaticRegister;
 use nova\framework\event\EventManager;
-use nova\framework\exception\AppExitException;
-use nova\framework\http\Response;
-use nova\framework\route\Route;
+use nova\framework\route\ControllerException;
+use nova\framework\route\RouteTrait;
 use nova\plugin\cookie\Session;
 use nova\plugin\login\db\Dao\RecordDao;
 use nova\plugin\login\db\Model\RecordModel;
 use nova\plugin\login\db\Model\UserModel;
-use nova\plugin\login\manager\PermissionManager;
 use nova\plugin\login\manager\PwdLoginManager;
 use nova\plugin\login\manager\SSOLoginManager;
+use nova\plugin\login\route\LoginRouteObject;
 use Throwable;
 
 /**
  * 登录管理器
  *
- * 负责处理用户登录、登出、登录状态检查等功能
- * 支持多种登录方式（密码登录、SSO登录）
- * 提供登录数量限制和会话管理功能
+ * 负责用户登录、登出、会话管理以及路由注册等功能
  *
  * @package nova\plugin\login
+ * @since 1.0.0
  */
 class LoginManager extends StaticRegister
 {
-    /**
-     * 注册登录管理器相关信息
-     *
-     * 在系统启动时注册各种登录管理器
-     */
-    public static function registerInfo(): void
-    {
-        SSOLoginManager::register();
-        PwdLoginManager::register();
-
-        EventManager::getInstance()->on('app.start', function ($request) {
-            self::getInstance()->onAppStart($request);
-        });
-
-        // 注册 RBAC 管理路由
-        $route = Route::getInstance();
-        $route->get('/login/admin_user/list', route('login', 'nova\plugin\login\controller\AdminUser', 'list'));
-        $route->post('/login/admin_user/save', route('login', 'nova\plugin\login\controller\AdminUser', 'save'));
-        $route->post('/login/admin_user/remove', route('login', 'nova\plugin\login\controller\AdminUser', 'remove'));
-
-        $route->get('/login/admin_role/list', route('login', 'nova\plugin\login\controller\AdminRole', 'list'));
-        $route->post('/login/admin_role/save', route('login', 'nova\plugin\login\controller\AdminRole', 'save'));
-        $route->post('/login/admin_role/remove', route('login', 'nova\plugin\login\controller\AdminRole', 'remove'));
-        $route->get('/login/admin_role/all', route('login', 'nova\plugin\login\controller\AdminRole', 'all'));
-        $route->get('/login/admin_role/permissions', route('login', 'nova\plugin\login\controller\AdminRole', 'permissions'));
-    }
-
-    /**
-     * 应用启动时的钩子，用于权限检查
-     */
-    public function onAppStart($request): void
-    {
-        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $uri = Route::getInstance()->getUri();
-
-        $pm = PermissionManager::getInstance();
-        if ($pm->isWhitelisted($method, $uri)) {
-            return;
-        }
-
-        $user = $this->checkLogin();
-        if (!$user) {
-            $redirect = $this->redirectLogin();
-            if ($this->isAjaxRequest()) {
-                throw new AppExitException(Response::asJson(['code' => 401, 'msg' => '请先登录', 'redirect' => $redirect], 401));
-            }
-            throw new AppExitException(Response::redirect($redirect));
-        }
-
-        if (!$pm->check($method, $uri, $user->permissions, $user->roles)) {
-            if ($this->isAjaxRequest()) {
-                throw new AppExitException(Response::asJson(['code' => 403, 'msg' => '权限不足'], 403));
-            }
-            throw new AppExitException(Response::asHtml('<h1>403 Forbidden</h1><p>你没有权限访问此页面。</p>', [], 403));
-        }
-    }
-
-    private function isAjaxRequest(): bool
-    {
-        return isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest'
-            || str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json');
-    }
-
-    /**
-     * 获取登录管理器实例
-     *
-     * 使用单例模式，确保全局只有一个登录管理器实例
-     *
-     * @return LoginManager 登录管理器实例
-     */
-    public static function getInstance(): LoginManager
-    {
-        return Context::instance()->getOrCreateInstance("loginManager", function () {
-            return new LoginManager();
-        });
-    }
-
-    /** @var LoginConfig 登录配置对象 */
-    private LoginConfig $loginConfig;
+    use RouteTrait;
 
     /**
      * 构造函数
-     *
-     * 初始化登录配置
      */
     public function __construct()
     {
-        $this->loginConfig = new LoginConfig();
+        $this->registerRoutes();
+    }
+
+    /**
+     * 注册 login 模块的路由规则
+     *
+     * @return void
+     */
+    private function registerRoutes(): void
+    {
+        // 不需要权限
+        $this->get('/login', LoginRouteObject::build('index', 'index'));
+        $this->get('/login/static/{file}', LoginRouteObject::build('index', 'static'));
+        $this->get('/login/captcha', LoginRouteObject::build('index', 'captcha'));
+        $this->post('/login', LoginRouteObject::build('index', 'login'));
+        $this->get('/login/logout', LoginRouteObject::build('index', 'logout'));
+        $this->get('/login/callback', LoginRouteObject::build('index', 'callback'));
+
+        $this->get('/login/pwd/config', LoginRouteObject::build('pwd', 'config'));
+        $this->post('/login/pwd/config', LoginRouteObject::build('pwd', 'save'));
+
+        // OIDC认证登录
+        $this->get('/login/oidc/config', LoginRouteObject::build('oidc', 'config'));
+        $this->post('/login/oidc/config', LoginRouteObject::build('oidc', 'save'));
+
+        // 用户列表
+        $this->get('/login/user/list', LoginRouteObject::build('user', 'list'));
+        $this->post('/login/user/update', LoginRouteObject::build('user', 'update'));
+        $this->post('/login/user/remove', LoginRouteObject::build('user', 'remove'));
+        $this->get('/login/user/{id}', LoginRouteObject::build('user', 'view'));
+
+        // 角色列表
+        $this->get('/login/role/list', LoginRouteObject::build('role', 'list'));
+        $this->post('/login/role/update', LoginRouteObject::build('role', 'update'));
+        $this->post('/login/role/remove', LoginRouteObject::build('role', 'remove'));
+        $this->get('/login/role/{id}', LoginRouteObject::build('role', 'view'));
+    }
+
+    /**
+     * 注册登录管理器相关信息
+     *
+     * @return void
+     */
+    public static function registerInfo(): void
+    {
+        EventManager::addListener("route.before", function ($event, &$uri) {
+            if (!str_starts_with($uri, "/login")) {
+                return;
+            }
+
+            $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+            $routeObj = self::getInstance()->dispatch($method, $uri);
+
+            if ($routeObj !== null) {
+                try {
+                    $routeObj->checkSelf();
+                    $routeObj->run();
+                } catch (ControllerException $e) {
+                    // 静默处理控制器异常
+                }
+            }
+        }, 500);
     }
 
     /**
      * 用户登录
      *
-     * 记录用户登录信息，如果登录数量超过限制，会将最早的登录踢下线
-     * 登录成功后会创建会话记录并保存用户信息到Session中
-     *
-     * @param  UserModel $user 用户模型对象
-     * @return bool      登录是否成功
+     * @param  UserModel $user 用户模型
+     * @return bool      登录成功返回true，失败返回false
      */
     public function login(UserModel $user): bool
     {
         try {
-            // 获取用户当前的登录记录
             $loginRecords = RecordDao::getInstance()->records($user);
+            $allowed = max(1, LoginConfig::getInstance()->allowedLoginCount);
 
-            // 如果登录数量达到上限，先踢掉“最老”的记录，给本次登录腾位置
-            // 注意：RecordDao::records() 已约定返回顺序为最新在前，因此最老的是数组末尾
-            $allowed = (int)$this->loginConfig->allowedLoginCount;
-            if ($allowed < 1) {
-                $allowed = 1;
-            }
             while (count($loginRecords) >= $allowed) {
                 $oldest = array_pop($loginRecords);
                 if ($oldest instanceof RecordModel) {
@@ -150,15 +119,10 @@ class LoginManager extends StaticRegister
                 }
             }
 
-            // 创建新的登录记录
             $record = RecordDao::getInstance()->add($user->id);
-
-            // 将登录记录和用户信息保存到Session中
-            Session::getInstance()->set('record', $record);
-            Session::getInstance()->set('user', $user);
+            Session::getInstance()->set('__record', $record);
             return true;
         } catch (Exception $e) {
-            // 记录错误日志
             Logger::error($e->getMessage(), $e->getTrace());
             return false;
         }
@@ -167,122 +131,103 @@ class LoginManager extends StaticRegister
     /**
      * 检查用户登录状态
      *
-     * 通过比对Session中的token和数据库中的记录来验证登录状态
-     * 防止多地登录和会话劫持
-     *
-     * @return UserModel|null 如果已登录返回用户模型，否则返回null
+     * @return UserModel|null 返回当前登录用户，未登录返回null
      */
     public function checkLogin(): ?UserModel
     {
         $session = Session::getInstance();
         $requestUri = $_SERVER['REQUEST_URI'];
+        $record = $session->get('__record');
 
-        // 获取登录记录
-        $record = $session->get('record');
-
-        // 验证登录记录是否有效
-        if (!($record instanceof RecordModel) || RecordDao::getInstance()->id($record->id) === null) {
-            // 仅在调试模式下输出原因，方便定位“自动退出”是 Session 丢失还是 record 被删
-            if (Context::instance()->isDebug()) {
-                Logger::warning('checkLogin failed: invalid record', [
-                    'uri' => $requestUri,
-                    'session_id' => session_id(),
-                    'session_name' => session_name(),
-                    'record_type' => is_object($record) ? $record::class : gettype($record),
-                    'record_id' => ($record instanceof RecordModel) ? $record->id : null,
-                ]);
-            }
+        if (!$record instanceof RecordModel || RecordDao::getInstance()->id($record->id) === null) {
             $this->setRedirectUriIfNeeded($requestUri);
             return null;
         }
 
-        // 获取用户信息
         $user = $record->user();
-
         if (!$user instanceof UserModel) {
-            if (Context::instance()->isDebug()) {
-                Logger::warning('checkLogin failed: record has no user', [
-                    'uri' => $requestUri,
-                    'record_id' => $record->id,
-                ]);
-            }
+            Session::getInstance()->delete('__record');
             $this->setRedirectUriIfNeeded($requestUri);
             return null;
-        }
-
-        // 使用 Session 中的用户信息覆盖部分字段
-        $sessionUser = $session->get('user');
-        if ($sessionUser instanceof UserModel) {
-            $user->display_name = $sessionUser->display_name;
-            $user->avatar = $sessionUser->avatar;
         }
 
         return $user;
     }
 
+    /**
+     * 设置重定向URI（仅非POST请求）
+     *
+     * @param  string $uri 当前请求URI
+     * @return void
+     */
     private function setRedirectUriIfNeeded(string $uri): void
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             return;
         }
         if ($uri !== "/login") {
-            Session::getInstance()->set('redirect_uri', $uri);
+            $this->setRedirectUri($uri);
         }
+    }
+
+    /**
+     * 设置重定向URI
+     *
+     * @param  string $uri 重定向地址
+     * @return void
+     */
+    public function setRedirectUri(string $uri): void
+    {
+        Session::getInstance()->set('__redirect_uri', $uri);
+    }
+
+    /**
+     * 获取重定向地址
+     *
+     * @return string 重定向地址
+     */
+    public function getRedirect(): string
+    {
+        $redirect = Session::getInstance()->get('__redirect_uri', LoginConfig::getInstance()->loginCallback);
+        Session::getInstance()->delete('__redirect_uri');
+        return $redirect ?: '/';
     }
 
     /**
      * 用户登出
      *
-     * 删除登录记录并销毁Session
-     *
-     * @return bool 登出是否成功
+     * @return bool 登出成功返回true
      */
     public function logout(): bool
     {
         $session = Session::getInstance();
-        $record = $session->get('record');
+        $record = $session->get('__record');
         $dao = RecordDao::getInstance();
 
         try {
-            // 如果确实拿到了有效的RecordModel且数据库中存在，再删除
-            if ($record instanceof RecordModel
-                && $dao->id($record->id) !== null
-            ) {
+            if ($record instanceof RecordModel && $dao->id($record->id) !== null) {
                 $dao->deleteModel($record);
             }
             return true;
         } catch (Throwable $e) {
-            // 记录错误日志
             Logger::error($e->getMessage(), $e->getTrace());
             return false;
         } finally {
-            // 无论成功还是失败，都只在这里销毁session
             $session->destroy();
         }
-    }
-
-
-    public function getConfig(): LoginConfig
-    {
-        return $this->loginConfig;
     }
 
     /**
      * 重定向到登录页面
      *
-     * 根据配置决定使用SSO登录还是密码登录
-     *
-     * @return string 登录页面的URL
+     * @return string 登录页面URL
      */
     public function redirectLogin(): string
     {
-        if ($this->loginConfig->ssoEnable) {
-            // 如果启用了SSO，重定向到SSO提供商
-            return (new SSOLoginManager())->redirectToProvider();
+        if (LoginConfig::getInstance()->ssoEnable) {
+            return SSOLoginManager::getInstance()->redirectToProvider();
         } else {
-            // 否则使用密码登录
-            return (new PwdLoginManager())->redirectToProvider();
+            return PwdLoginManager::getInstance()->redirectToProvider();
         }
     }
-
 }

@@ -18,40 +18,27 @@ use nova\plugin\orm\object\Dao;
  * 添加新的登录记录以及根据ID查找特定记录等功能。
  *
  * @package nova\plugin\login\db\Dao
+ * @since 1.0.0
  */
 class RecordDao extends Dao
 {
     /**
      * 获取指定用户的所有登录记录
      *
-     * 根据用户ID查询该用户的所有登录记录，按时间倒序排列，
-     * 最新的登录记录排在第一位。
-     *
      * @param  UserModel $user 用户模型对象
-     * @return array     返回该用户的所有登录记录数组
+     * @return array     返回该用户的所有登录记录数组（按时间倒序）
      */
     public function records(UserModel $user): array
     {
-        // 明确排序：否则数据库默认顺序不确定，会导致“踢人/校验”表现随机
-        // 约定：返回结果按 time DESC, id DESC（最新在前）
         return $this->select()
-            ->where([
-                'user_id' => $user->id
-            ])
-            ->orderBy('time')
-            ->orderBy('id')
+            ->where(['user_id' => $user->id])
+            ->orderBy('time', 'DESC')
+            ->orderBy('id', 'DESC')
             ->commit();
     }
 
     /**
      * 添加新的用户登录记录
-     *
-     * 创建并保存一条新的用户登录记录，包括：
-     * - 设备信息（操作系统和浏览器）
-     * - 用户ID
-     * - 登录时间戳
-     * - IP地址
-     * - IP地址对应的地理位置信息
      *
      * @param  int         $user_id 用户ID
      * @return RecordModel 返回创建的登录记录模型对象
@@ -61,10 +48,9 @@ class RecordDao extends Dao
         $record = new RecordModel();
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
         [$OsName, $OsImg, $BrowserName, $BrowserImg] = UserAgent::parse($ua);
-        $record->device =  "$OsImg $OsName $BrowserImg $BrowserName";
+        $record->device = "$OsImg $OsName $BrowserImg $BrowserName";
         $record->user_id = $user_id;
         $record->time = time();
-        // 使用框架请求对象获取规范化后的客户端 IP（移除可能的端口）
         $record->ip = Context::instance()->request()->getClientIP();
         $ip2region = new Ip2Region();
         $record->addr = $ip2region->simple($record->ip);
@@ -75,8 +61,6 @@ class RecordDao extends Dao
 
     /**
      * 根据记录ID查找登录记录
-     *
-     * 通过记录的唯一标识符查找特定的登录记录。
      *
      * @param  int              $id 登录记录ID
      * @return RecordModel|null 返回找到的登录记录模型对象，如果未找到则返回null

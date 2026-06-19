@@ -5,67 +5,30 @@ declare(strict_types=1);
 namespace nova\plugin\login\manager;
 
 use nova\framework\core\Context;
-use nova\framework\event\EventManager;
 use nova\framework\exception\AppExitException;
-use nova\framework\http\Response;
 use nova\plugin\avatar\Avatar;
 use nova\plugin\cookie\Session;
 use nova\plugin\http\HttpClient;
 use nova\plugin\http\HttpException;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
-use nova\plugin\login\LoginManager;
-use function nova\framework\uuid;
+use nova\plugin\login\LoginConfig;
 
 /**
  * SSO单点登录管理器
- * 用于处理与SSO认证服务器的交互，包括登录、回调处理等功能
+ *
+ * 处理与SSO认证服务器的交互，包括登录、回调处理等功能
+ *
+ * @package nova\plugin\login\manager
+ * @since 1.0.0
  */
 class SSOLoginManager extends BaseLoginManager
 {
-    /** @var string SSO客户端ID */
-    protected string $clientId;
-    /** @var string SSO客户端密钥 */
-    protected string $clientSecret;
-    /** @var string SSO服务提供者基础URL */
-    protected string $providerUrl;
-    /** @var string 授权URL */
-    protected string $authorizeUrl;
-    /** @var string 令牌URL */
-    /** @var string 用户信息URL */
-    /** @var bool 是否必须拥有账户才能登录 */
-    protected bool $mustHasAccount = true;
-    /** @var string 用户标识字段 */
-    protected string $userField = 'username';
-    /** @var string 用户信息URL */
-    protected string $userInfoUrl = '/userinfo';
-    /** @var string 用户显示名称字段 */
-    protected string $displayNameField = 'nickname';
-    /** @var string 用户头像字段 */
-    protected string $avatarField = 'avatar_url';
-
-    /**
-     * 构造函数
-     * 初始化SSO配置信息
-     */
-    public function __construct()
-    {
-        parent::__construct();
-        $this->providerUrl  = $this->loginConfig->ssoProviderUrl;
-        $this->clientId     = $this->loginConfig->ssoClientId;
-        $this->clientSecret = $this->loginConfig->ssoClientSecret;
-        $this->mustHasAccount = $this->loginConfig->ssoMustHasAccount;
-        $this->userField = $this->loginConfig->ssoUserField;
-        $this->userInfoUrl = $this->loginConfig->ssoUserInfoUrl;
-        $this->displayNameField = $this->loginConfig->ssoDisplayNameField;
-        $this->avatarField = $this->loginConfig->ssoAvatarField;
-        $this->authorizeUrl = $this->providerUrl . '/authorize';
-
-
-    }
+    private string $callback = "/login/callback";
 
     /**
      * 获取SSO登录URL
+     *
      * @param  string $redirectUri 登录成功后的回调地址
      * @return string 完整的SSO登录URL
      */
@@ -74,8 +37,8 @@ class SSOLoginManager extends BaseLoginManager
         $state = uuid();
         Session::getInstance()->set('sso_state', $state);
 
-        return $this->authorizeUrl . '?' . http_build_query([
-            'client_id' => $this->clientId,
+        return LoginConfig::getInstance()->ssoProviderUrl . '?' . http_build_query([
+            'client_id' => LoginConfig::getInstance()->ssoClientId,
             'redirect_uri' => $redirectUri,
             'response_type' => 'code',
             'scope' => 'openid email profile',
@@ -85,6 +48,7 @@ class SSOLoginManager extends BaseLoginManager
 
     /**
      * 处理SSO回调
+     *
      * @param  string                         $code  授权码
      * @param  string                         $state 状态码
      * @return UserModel|null                 用户模型，如果登录失败则返回null
@@ -92,20 +56,18 @@ class SSOLoginManager extends BaseLoginManager
      */
     public function handleCallback(string $code, string $state): ?UserModel
     {
-
         $storedState = Session::getInstance()->get('sso_state');
-
         if ($state !== $storedState) {
             return null;
         }
 
-        $response = HttpClient::init($this->providerUrl)
+        $response = HttpClient::init(LoginConfig::getInstance()->ssoProviderUrl)
             ->post([
                 'grant_type' => 'authorization_code',
                 'code' => $code,
-                'client_id' => $this->clientId,
-                'client_secret' => $this->clientSecret,
-                'redirect_uri' => Context::instance()->request()->getBasicAddress() . "/sso/callback",
+                'client_id' => LoginConfig::getInstance()->ssoClientId,
+                'client_secret' => LoginConfig::getInstance()->ssoClientSecret,
+                'redirect_uri' => $this->callback(),
             ], 'form')
             ->send('/token');
 
@@ -115,159 +77,79 @@ class SSOLoginManager extends BaseLoginManager
         }
 
         $userInfo = $this->fetchUserInfo($data['access_token']);
-        if (!$userInfo || !isset($userInfo[$this->userField])) {
+        if (!$userInfo || !isset($userInfo[LoginConfig::getInstance()->ssoUserField])) {
             return null;
         }
+
         return $this->findOrCreateUser($userInfo);
     }
 
     /**
      * 获取用户信息
+     *
      * @param  string        $token 访问令牌
      * @return array|null    用户信息数组，如果获取失败则返回null
      * @throws HttpException
      */
     protected function fetchUserInfo(string $token): ?array
     {
-        $res = HttpClient::init($this->providerUrl)
+        $res = HttpClient::init()
             ->get()
             ->setHeader('Authorization', 'Bearer ' . $token)
-            ->send($this->userInfoUrl);
+            ->send(LoginConfig::getInstance()->ssoUserInfoUrl);
 
         return $res->getHttpCode() === 200 ? json_decode($res->getBody(), true) : null;
     }
 
     /**
      * 查找或创建用户
+     *
      * @param  array          $info 用户信息
      * @return UserModel|null 用户模型，如果创建失败则返回null
      */
     protected function findOrCreateUser(array $info): ?UserModel
     {
         $dao = UserDao::getInstance();
-        $username = $info[$this->userField];
+        $username = $info[LoginConfig::getInstance()->ssoUserField];
         $user = $dao->username($username);
+
         if ($user) {
-            $user->display_name = $info[$this->displayNameField] ?? $username;
-            $user->avatar = $info[$this->avatarField] ?? $user->avatar;
+            $user->display_name = $info[LoginConfig::getInstance()->ssoDisplayNameField] ?? $username;
+            $user->avatar = $info[LoginConfig::getInstance()->ssoAvatarField] ?? $user->avatar;
             return $user;
         }
 
-        if ($this->mustHasAccount) {
+        if (LoginConfig::getInstance()->ssoMustHasAccount) {
             return null;
         }
 
         $user = new UserModel();
-        $user->display_name = $info[$this->displayNameField] ?? $username;
+        $user->display_name = $info[LoginConfig::getInstance()->ssoDisplayNameField] ?? $username;
         $user->password = password_hash(uuid(), PASSWORD_DEFAULT);
         $user->username = $username;
-        $user->avatar = $info[$this->avatarField] ?? Avatar::toBase64(Avatar::svg($username));
+        $user->avatar = $info[LoginConfig::getInstance()->ssoAvatarField] ?? Avatar::toBase64(Avatar::svg($username));
         $dao->insertModel($user);
+
         return $user;
     }
 
     /**
+     * 获取回调地址
+     *
+     * @return string 回调URL
+     */
+    private function callback(): string
+    {
+        return Context::instance()->request()->getBasicAddress() . $this->callback;
+    }
+
+    /**
      * 重定向到SSO服务提供者
+     *
      * @return string 重定向URL
      */
     public function redirectToProvider(): string
     {
-        return $this->getLoginUrl(Context::instance()->request()->getBasicAddress()."/sso/callback");
-    }
-
-    /**
-     * 注册SSO路由处理器
-     * 用于处理SSO回调请求和SSO配置
-     */
-    public static function register(): void
-    {
-        EventManager::addListener("route.before", function ($event, &$uri) {
-
-            if (str_starts_with($uri, "/sso/callback")) {
-                $sso = new SSOLoginManager();
-
-                $user =  $sso->handleCallback($_GET['code'], $_GET['state']);
-                if ($user) {
-                    LoginManager::getInstance()->login($user);
-                    $redirect = $sso->loginConfig->loginCallback;
-                    throw new AppExitException(Response::asRedirect($redirect));
-                }
-                throw new AppExitException(Response::asText("login failed"));
-            }
-
-            if (str_starts_with($uri, "/sso/config")) {
-
-                $sso = new SSOLoginManager();
-                $response = $sso->handleSSO();
-                throw new AppExitException($response, 'Exit by SSO');
-            }
-        });
-    }
-
-    const string PERMISSION_SSO = "SSO配置权限";
-    const string TPL_SSO =  ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . 'login' . DS . 'tpl' . DS."oidc";
-
-    /**
-     * 处理SSO配置请求
-     * GET请求：获取SSO配置
-     * POST请求：更新SSO配置
-     *
-     * @return Response SSO配置响应
-     */
-    private function handleSSO(): Response
-    {
-
-        $user = LoginManager::getInstance()->checkLogin();
-        if (!$user) {
-            return Response::asJson([
-                "code"  => 301,
-                "msg"   => $this->redirectToProvider(),
-            ]);
-        }
-        if (!$user->hasPermission(self::PERMISSION_SSO)) {
-            return  Response::asJson([
-                "code"  => 403,
-                "msg"   => "无权访问",
-            ]);
-        }
-        if ($_SERVER['REQUEST_METHOD'] == 'GET') {
-            return Response::asJson([
-                "code"  => 200,
-                "data"  => [
-                    'ssoEnable' => $this->loginConfig->ssoEnable,
-                    'ssoProviderUrl' => $this->loginConfig->ssoProviderUrl,
-                    'ssoClientId' => $this->loginConfig->ssoClientId,
-                    'ssoClientSecret' => $this->loginConfig->ssoClientSecret,
-                    'ssoMustHasAccount' => $this->loginConfig->ssoMustHasAccount,
-                    'ssoUserField' => $this->loginConfig->ssoUserField,
-                    'ssoUserInfoUrl' => $this->loginConfig->ssoUserInfoUrl,
-                    'ssoDisplayNameField' => $this->loginConfig->ssoDisplayNameField,
-                    'ssoAvatarField' => $this->loginConfig->ssoAvatarField,
-                    'allowedLoginCount' => $this->loginConfig->allowedLoginCount,
-                    'loginCallback' => $this->loginConfig->loginCallback,
-                    'systemName' => $this->loginConfig->systemName,
-                ]
-            ]);
-        } else {
-
-            $this->loginConfig->ssoEnable = isset($_POST['ssoEnable']) ? boolval($_POST['ssoEnable']) : $this->loginConfig->ssoEnable;
-            $this->loginConfig->ssoMustHasAccount = isset($_POST['ssoMustHasAccount']) ? boolval($_POST['ssoMustHasAccount']) : $this->loginConfig->ssoMustHasAccount;
-            $this->loginConfig->ssoProviderUrl = $_POST['ssoProviderUrl'] ?? $this->loginConfig->ssoProviderUrl;
-            $this->loginConfig->ssoClientId =  $_POST['ssoClientId'] ?? $this->loginConfig->ssoClientId;
-            $this->loginConfig->ssoClientSecret = $_POST['ssoClientSecret'] ?? $this->loginConfig->ssoClientSecret;
-            $this->loginConfig->ssoUserField = $_POST['ssoUserField'] ?? $this->loginConfig->ssoUserField;
-            $this->loginConfig->ssoUserInfoUrl = $_POST['ssoUserInfoUrl'] ?? $this->loginConfig->ssoUserInfoUrl;
-            $this->loginConfig->ssoDisplayNameField = $_POST['ssoDisplayNameField'] ?? $this->loginConfig->ssoDisplayNameField;
-            $this->loginConfig->ssoAvatarField = $_POST['ssoAvatarField'] ?? $this->loginConfig->ssoAvatarField;
-            $this->loginConfig->allowedLoginCount = isset($_POST['allowedLoginCount']) ? intval($_POST['allowedLoginCount']) : $this->loginConfig->allowedLoginCount;
-            $this->loginConfig->loginCallback = $_POST['loginCallback'] ?? $this->loginConfig->loginCallback;
-            $this->loginConfig->systemName = $_POST['systemName'] ?? $this->loginConfig->systemName;
-
-
-            return Response::asJson([
-                "code"  => 200,
-                "msg"   => "操作成功",
-            ]);
-        }
+        return $this->getLoginUrl($this->callback());
     }
 }

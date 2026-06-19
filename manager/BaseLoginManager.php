@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\manager;
 
-use nova\plugin\login\LoginConfig;
-use nova\plugin\login\LoginManager;
+use nova\framework\core\Instance;
 
 /**
  * 登录管理器基类
@@ -14,29 +13,10 @@ use nova\plugin\login\LoginManager;
  * 所有具体的登录管理器（如密码登录、SSO登录等）都应该继承此类。
  *
  * @package nova\plugin\login\manager
- * @author Nova Framework
+ * @since 1.0.0
  */
-abstract class BaseLoginManager
+abstract class BaseLoginManager extends Instance
 {
-    /**
-     * 登录配置对象
-     *
-     * 包含登录相关的配置信息，如登录URL、回调地址等
-     *
-     * @var LoginConfig
-     */
-    protected LoginConfig $loginConfig;
-
-    /**
-     * 构造函数
-     *
-     * 初始化登录管理器，创建默认的登录配置对象
-     */
-    public function __construct()
-    {
-        $this->loginConfig = LoginManager::getInstance()->getConfig();
-    }
-
     /**
      * 重定向到登录提供者
      *
@@ -46,15 +26,4 @@ abstract class BaseLoginManager
      * @return string 重定向URL
      */
     abstract public function redirectToProvider(): string;
-
-    /**
-     * 注册登录管理器
-     *
-     * 静态方法，用于在系统中注册具体的登录管理器实现。
-     * 子类必须实现此方法来完成登录管理器的注册流程。
-     *
-     * @return void
-     */
-    abstract public static function register();
-
 }
