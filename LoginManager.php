@@ -7,6 +7,7 @@ namespace nova\plugin\login;
 use Exception;
 use nova\framework\core\Logger;
 use nova\framework\core\StaticRegister;
+
 use nova\framework\event\EventManager;
 use nova\framework\route\ControllerException;
 use nova\framework\route\RouteTrait;
@@ -86,8 +87,7 @@ class LoginManager extends StaticRegister
                 return;
             }
 
-            $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-            $routeObj = self::getInstance()->dispatch($method, $uri);
+            $routeObj = self::getInstance()->dispatch($uri, $_SERVER['REQUEST_METHOD']);
 
             if ($routeObj !== null) {
                 try {
