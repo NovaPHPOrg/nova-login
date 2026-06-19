@@ -8,6 +8,7 @@ use nova\framework\http\Response;
 use nova\framework\route\Controller;
 use nova\plugin\captcha\Captcha;
 use nova\plugin\login\db\Dao\UserDao;
+use nova\plugin\login\LoginConfig;
 use nova\plugin\login\LoginManager;
 use nova\plugin\login\manager\SSOLoginManager;
 use nova\plugin\tpl\Pjax;
@@ -35,7 +36,7 @@ class Index extends Controller
         $view = new ViewResponse();
         $view->init(
             '',
-            ['title' => $this->context->config('system_name', '管理后台')],
+            ['title' => LoginConfig::getInstance()->systemName ?? "管理后台"],
             '{',
             '}',
             ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . 'login' . DS . 'tpl' . DS
