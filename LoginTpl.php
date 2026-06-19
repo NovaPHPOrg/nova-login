@@ -43,20 +43,62 @@ class LoginTpl extends Instance
      *
      * @param  ViewResponse  $viewResponse 视图响应对象
      * @param  Request       $request      HTTP请求对象
-     * @return Response      视图响应
+     * @return ?Response     视图响应
      * @throws ViewException 模板异常
      */
-    public function route(ViewResponse $viewResponse, Request $request): Response
+    public function route(ViewResponse $viewResponse, Request $request): ?Response
     {
         $uri = $request->getUri();
         $data = explode('/', $uri);
 
         if (sizeof($data) !== 3) {
-            return Response::asRedirect("/404");
+            return null;
         }
 
         $action = trim($data[2]);
 
-        return $viewResponse->asTpl(ROOT_PATH . DS . 'nova/plugin/login/tpl/' . $action . ".tpl");
+        if (in_array($action, ['oidc','pwd','role','user'])) {
+
+            return $viewResponse->asTpl(ROOT_PATH . DS . 'nova/plugin/login/tpl/' . $action);
+        }
+
+        return null;
     }
+
+    public function menu(): array
+    {
+        return [
+            'title' => '登录管理',
+            'icon' => 'vpn_key',
+            'url' => '/login/pwd/config',
+            'pjax' => true,
+            'sub' => [
+                [
+                    'title' => '角色管理',
+                    'icon' => 'admin_panel_settings',
+                    'url' => '/login/role',
+                    'pjax' => true,
+                ],
+                [
+                    'title' => '用户管理',
+                    'icon' => 'people',
+                    'url' => '/login/user',
+                    'pjax' => true,
+                ],
+                [
+                    'title' => '账户安全',
+                    'icon' => 'security',
+                    'url' => '/login/pwd',
+                    'pjax' => true,
+                ],
+                [
+                    'title' => '统一认证登录',
+                    'icon' => 'fingerprint',
+                    'url' => '/login/oidc',
+                    'pjax' => true,
+                ],
+            ],
+        ];
+    }
+
 }

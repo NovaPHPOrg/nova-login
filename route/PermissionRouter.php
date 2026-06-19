@@ -49,6 +49,10 @@ class PermissionRouter extends Instance
             return false;
         }
 
+        if (in_array('all', $role->permissions)) {
+            return true;
+        }
+
         $uri = $request->getUri();
         $method = $request->getRequestMethod();
 
@@ -111,5 +115,71 @@ class PermissionRouter extends Instance
     public function registerPermissions(string $name, array $permissions): void
     {
         $this->permissions[$name] = $permissions;
+    }
+
+    public function filterMenu(array $menus, array $permissions): array
+    {
+        // 如果用户拥有all权限，返回所有菜单
+        if (in_array('all', $permissions)) {
+            return $menus;
+        }
+
+        // 过滤菜单项
+        return array_filter($menus, function ($menu) use ($permissions) {
+            // 如果没有url字段，保留（通常是分组标题）
+            if (!isset($menu['url'])) {
+                return true;
+            }
+
+            $url = $menu['url'];
+
+            // 检查当前菜单项是否有权限
+            $hasPermission = $this->checkMenuPermission($url, $permissions);
+
+            // 如果有子菜单，递归过滤子菜单
+            if (isset($menu['sub']) && is_array($menu['sub'])) {
+                $menu['sub'] = $this->filterMenu($menu['sub'], $permissions);
+                // 如果子菜单全部被过滤掉，且当前菜单项无权限，则移除
+                if (empty($menu['sub']) && !$hasPermission) {
+                    return false;
+                }
+                // 如果子菜单还有保留项，保留当前菜单项
+                return true;
+            }
+
+            return $hasPermission;
+        });
+    }
+
+    /**
+     * 检查单个菜单项是否有权限
+     *
+     * @param  string $url         菜单URL
+     * @param  array  $permissions 用户权限列表
+     * @return bool   有权限返回true
+     */
+    private function checkMenuPermission(string $url, array $permissions): bool
+    {
+        foreach ($permissions as $permissionName) {
+            if (!isset($this->permissions[$permissionName])) {
+                continue;
+            }
+
+            foreach ($this->permissions[$permissionName] as $rule) {
+                $parts = explode(' ', $rule, 2);
+                if (count($parts) !== 2) {
+                    continue;
+                }
+
+                [$ruleMethod, $rulePath] = $parts;
+
+                // 使用matchUri匹配URL（支持 * 通配符）
+                if ($this->matchUri($rulePath, $url)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }
