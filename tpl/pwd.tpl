@@ -25,7 +25,7 @@
                         name="username"
                         type="text"
                         variant="outlined"
-                        value="{$username}"
+                        value=""
                         required
                         helper="请记住你修改后的账号地址，下次使用该账号登录"
                     ></mdui-text-field>

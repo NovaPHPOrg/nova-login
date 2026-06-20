@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace nova\plugin\login\controller;
 
 use app\controller\manager\BaseController;
+
+use function nova\framework\dump;
+
 use nova\framework\http\Response;
 use nova\plugin\login\db\Dao\RoleDao;
 use nova\plugin\login\db\Dao\UserDao;
@@ -39,21 +42,20 @@ class Role extends BaseController
 
         $permissions = PermissionRouter::getInstance()->permissions();
 
+        // dump($permissions, $result);
+
         // 转换权限列表为显示名称
-        if (isset($result['data']) && is_array($result['data'])) {
-            foreach ($result['data'] as &$item) {
+        foreach ($result['data'] as &$item) {
 
-                $array = $item->toArray();
-                $array['permissions_display']  = array_map(function ($perm) use ($permissions) {
-                    return $permissions[$perm] ?? $perm;
-                }, $item->permissions);
+            $array = $item->toArray();
+            $array['permissions_display']  = array_map(function ($perm) use ($permissions) {
+                return $permissions[$perm] ?? $perm;
+            }, $item->permissions);
 
-                $array['permissions']  = $item->permissions;
+            $array['permissions']  = $item->permissions;
 
-                $item = $array;
-            }
+            $item = $array;
         }
-
         return Response::asJson([
             'code' => 200,
             'data' => $result['data'],
@@ -79,10 +81,35 @@ class Role extends BaseController
     public function update(): Response
     {
         $dao = RoleDao::getInstance();
-        $model = new RoleModel($this->request->post());
-        $model->id = $dao->insertModel($model, true);
+        $data = $this->request->post();
+        $id = (int)$this->request->post('id', 0);
 
-        return Response::asJson(['code' => 200, 'msg' => '保存成功'], 200);
+        // 验证权限列表
+        if (isset($data['permissions']) && !is_array($data['permissions'])) {
+            $data['permissions'] = [$data['permissions']];
+        }
+
+        // 验证角色名称
+        $name = trim($this->request->post('name', ''));
+        if ($name === '') {
+            return Response::asJson(['code' => 400, 'msg' => '角色名称不能为空'], 400);
+        }
+
+        if ($id > 0) {
+            $model = $dao->id($id);
+            if ($model) {
+                $model = new RoleModel($data);
+                $dao->updateModel($model);
+                return Response::asJson(['code' => 200, 'msg' => '保存成功', 'data' => $model]);
+            }
+            return Response::asJson(['code' => 404, 'msg' => '角色不存在']);
+        }
+
+        // 修复：去掉 insertModel 末尾多余逗号
+        $model = new RoleModel($data);
+        $model->id = $dao->insertModel($model);  // 修复：删除末尾逗号
+
+        return Response::asJson(['code' => 200, 'msg' => '保存成功', 'data' => $model]);
     }
 
     /**
@@ -96,17 +123,17 @@ class Role extends BaseController
         $role = RoleDao::getInstance()->id($id);
 
         if (!$role) {
-            return Response::asJson(['code' => 404, 'msg' => '角色不存在'], 404);
+            return Response::asJson(['code' => 404, 'msg' => '角色不存在']);
         }
 
         $count = UserDao::getInstance()->countByRole($id);
         if ($count > 0) {
-            return Response::asJson(['code' => 400, 'msg' => '该角色仍有 ' . $count . ' 个用户，无法删除'], 400);
+            return Response::asJson(['code' => 400, 'msg' => '该角色仍有 ' . $count . ' 个用户，无法删除']);
         }
 
         RoleDao::getInstance()->deleteById($id);
 
-        return Response::asJson(['code' => 200, 'msg' => '删除成功'], 200);
+        return Response::asJson(['code' => 200, 'msg' => '删除成功']);
     }
 
 }

@@ -22,7 +22,8 @@
             <mdui-icon name="security" class="refresh mr-2"></mdui-icon>
             <span>角色管理</span>
             <div style="flex-grow: 1"></div>
-            <mdui-button icon="add" id="addRole">创建角色</mdui-button>
+            <mdui-button icon="add" id="addRole">创建</mdui-button>
+            <mdui-button-icon icon="refresh" id="refreshTable" variant="outlined" class="ml-2"></mdui-button-icon>
         </div>
         <div class="col-xs12">
             <div id="dataTable" class="table-card mt-2 w-100"></div>
@@ -39,7 +40,7 @@
                 <label class="mdui-textfield">权限列表</label>
                 <div class="permission-group">
                     {foreach $permissions as $key => $label}
-                        <mdui-checkbox name="permissions[]" value="{$key}" {if in_array($key, $rolePermissions ?? [])}checked{/if}>{$label}</mdui-checkbox>
+                        <mdui-checkbox name="permissions" value="{$key}">{$label}</mdui-checkbox>
                     {/foreach}
                 </div>
             </div>

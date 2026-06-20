@@ -5,6 +5,7 @@ window.pageLoadFiles = [
     'Request',
     'Toaster',
     'Loader',
+    'Layer'
 ];
 
 window.pageOnLoad = function (loading) {
@@ -30,11 +31,11 @@ window.pageOnLoad = function (loading) {
                     align: "center",
                     formatter: function (value, row, index) {
                         if (!value || !value.length) {
-                            return '<span class="mdui-text-color-secondary">无权限</span>';
+                            return '<span class="badge badge-error">无权限</span>';
                         }
                         let html = '';
                         value.forEach(function (perm) {
-                            html += '<span class="tag badge-neutral permission-chip">' + perm + '</span>';
+                            html += '<span class="badge badge-info">' + perm + '</span>';
                         });
                         return html;
                     },
@@ -92,21 +93,29 @@ window.pageOnLoad = function (loading) {
             $.toaster.error("无法获取角色信息");
             return;
         }
-        $.dialog.confirm("确定要删除该角色吗？删除后使用该角色的用户将失去权限。", function () {
-            $.request.postForm("/login/role/remove", { id: row.id }, function (data) {
-                if (data.code === 200) {
-                    $.toaster.success(data.msg);
-                    table.reload({}, true);
-                } else {
-                    $.toaster.error(data.msg);
-                }
-            });
+        $.layer.confirm({
+            msg: "确定要删除该角色吗？删除后使用该角色的用户将失去权限。",
+            yes: function () {
+                $.request.postForm("/login/role/remove", { id: row.id }, function (data) {
+                    if (data.code === 200) {
+                        $.toaster.success(data.msg);
+                        table.reload({}, true);
+                    } else {
+                        $.toaster.error(data.msg);
+                    }
+                });
+            }
         });
     });
 
     // 新建角色
     $("#addRole").on("click", function () {
         dialog.open(true);
+    });
+
+    // 刷新表格
+    $("#refreshTable").on("click", function () {
+        table.reload({}, true);
     });
 
     // 保存角色

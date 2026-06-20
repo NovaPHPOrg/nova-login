@@ -26,7 +26,11 @@ class User extends BaseController
     {
         $page = (int)$this->request->get('page', 1);
         $pageSize = (int)$this->request->get('pageSize', 10);
-        $keyword = (string)$this->request->get('keyword', '');
+        // 同时支持search和keyword参数
+        $keyword = (string)$this->request->get('search', '');
+        if ($keyword === '') {
+            $keyword = (string)$this->request->get('keyword', '');
+        }
 
         $conditions = [];
         if ($keyword !== '') {
@@ -38,7 +42,8 @@ class User extends BaseController
         $rows = $result['data'];
 
         foreach ($rows as &$row) {
-            $row['role_data'] = RoleDao::getInstance()->id($row['role']);
+            $role = RoleDao::getInstance()->id(intval($row['role']));
+            $row['role_name'] = $role?->name;
         }
 
         return Response::asJson([
@@ -64,20 +69,23 @@ class User extends BaseController
                 return Response::asJson(['code' => 404, 'msg' => '不存在该用户'], 404);
             }
             $model->display_name = $this->request->post('display_name', '');
-            $model->role = (int)$this->request->post('role', 0);
+
+            if ($model->id !== 1) {
+                $model->role = (int)$this->request->post('role', 0);
+            }
 
             $pwd = $this->request->post('password', '');
             if ($pwd !== '') {
                 $model->password = password_hash($pwd, PASSWORD_DEFAULT);
             }
+            $dao->updateModel($model);
         } else {
             $model = new UserModel($this->request->post());
             $model->password = password_hash($model->password, PASSWORD_DEFAULT);
+            $model->id = $dao->insertModel($model);
         }
 
-        $model->id = $dao->insertModel($model, true);
-
-        return Response::asJson(['code' => 200, 'msg' => '保存成功'], 200);
+        return Response::asJson(['code' => 200, 'msg' => '保存成功', 'data' => $model]);
     }
 
     /**
@@ -89,32 +97,17 @@ class User extends BaseController
     {
         $id = (int)$this->request->post('id', 0);
         if ($id === 1) {
-            return Response::asJson(['code' => 400, 'msg' => '不能删除默认管理员'], 400);
+            return Response::asJson(['code' => 400, 'msg' => '不能删除默认管理员']);
         }
 
         $user = UserDao::getInstance()->id($id);
         if (!$user) {
-            return Response::asJson(['code' => 404, 'msg' => '用户不存在'], 404);
+            return Response::asJson(['code' => 404, 'msg' => '用户不存在']);
         }
 
         UserDao::getInstance()->deleteById($id);
 
-        return Response::asJson(['code' => 200, 'msg' => '删除成功'], 200);
+        return Response::asJson(['code' => 200, 'msg' => '删除成功']);
     }
 
-    /**
-     * 获取用户详情
-     *
-     * @param  int      $id 用户ID
-     * @return Response 返回用户详情JSON响应
-     */
-    public function view(int $id): Response
-    {
-        $user = UserDao::getInstance()->id($id);
-        if (!$user) {
-            return Response::asJson(['code' => 404, 'msg' => '用户不存在'], 404);
-        }
-
-        return Response::asJson(['code' => 200, 'data' => $user], 200);
-    }
 }

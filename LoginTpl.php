@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace nova\plugin\login;
 
 use nova\framework\core\Instance;
+
 use nova\framework\http\Request;
 use nova\framework\http\Response;
 use nova\framework\route\Route;
+use nova\plugin\login\db\Dao\RoleDao;
 use nova\plugin\login\route\PermissionRouter;
 use nova\plugin\tpl\ViewException;
 use nova\plugin\tpl\ViewResponse;
@@ -49,9 +51,13 @@ class LoginTpl extends Instance
      */
     public function route(ViewResponse $viewResponse, Request $request): ?Response
     {
-        $uri = $request->getUri();
-        $data = explode('/', $uri);
 
+        $uri = $request->getUri();
+        $parts = explode('?', $uri, 2);
+        if (count($parts) > 1) {
+            $uri = $parts[0];
+        }
+        $data = explode('/', $uri);
         if (sizeof($data) !== 3) {
             return null;
         }
@@ -65,6 +71,10 @@ class LoginTpl extends Instance
             if ($action === 'role') {
                 $data = [
                     'permissions' => PermissionRouter::getInstance()->permissions(),
+                ];
+            } elseif ($action === 'user') {
+                $data = [
+                    'roles' => RoleDao::getInstance()->getAll()['data'],
                 ];
             }
 

@@ -122,6 +122,7 @@ class UserModel extends Model
             "3_4" => [
                 "ALTER TABLE `user` ADD COLUMN `role` TEXT COMMENT '用户角色ID数组';",
                 "UPDATE `user` SET `role` = 1 WHERE id = 1;",
+                "ALTER TABLE `user` DROP COLUMN `permissions`;",
             ]
         ];
     }
