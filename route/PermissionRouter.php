@@ -35,6 +35,11 @@ class PermissionRouter extends Instance
         ],
     ];
 
+    private array $display = [
+        'all'  => '全部权限',
+        'user_manage' => "用户管理",
+    ];
+
     /**
      * 判断用户是否有权限访问
      *
@@ -102,7 +107,7 @@ class PermissionRouter extends Instance
      */
     public function permissions(): array
     {
-        return $this->permissions;
+        return $this->display;
     }
 
     /**
@@ -112,9 +117,10 @@ class PermissionRouter extends Instance
      * @param  array  $permissions 权限规则数组
      * @return void
      */
-    public function registerPermissions(string $name, array $permissions): void
+    public function registerPermissions(string $display, string $name, array $permissions): void
     {
         $this->permissions[$name] = $permissions;
+        $this->display[$name] = $display;
     }
 
     public function filterMenu(array $menus, array $permissions): array

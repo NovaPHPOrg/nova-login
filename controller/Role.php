@@ -9,6 +9,7 @@ use nova\framework\http\Response;
 use nova\plugin\login\db\Dao\RoleDao;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\RoleModel;
+use nova\plugin\login\route\PermissionRouter;
 
 /**
  * 角色管理控制器
@@ -36,11 +37,38 @@ class Role extends BaseController
 
         $result = RoleDao::getInstance()->getAll(null, $conditions, $page, $pageSize);
 
+        $permissions = PermissionRouter::getInstance()->permissions();
+
+        // 转换权限列表为显示名称
+        if (isset($result['data']) && is_array($result['data'])) {
+            foreach ($result['data'] as &$item) {
+
+                $array = $item->toArray();
+                $array['permissions_display']  = array_map(function ($perm) use ($permissions) {
+                    return $permissions[$perm] ?? $perm;
+                }, $item->permissions);
+
+                $array['permissions']  = $item->permissions;
+
+                $item = $array;
+            }
+        }
+
         return Response::asJson([
             'code' => 200,
             'data' => $result['data'],
             'count' => $result['total'],
         ]);
+    }
+
+    /**
+     * 获取所有权限列表
+     *
+     * @return Response 返回权限列表JSON响应
+     */
+    public function permissions(): Response
+    {
+        return Response::asJson(['code' => 200, 'data' => PermissionRouter::getInstance()->permissions()], 200);
     }
 
     /**
@@ -81,19 +109,4 @@ class Role extends BaseController
         return Response::asJson(['code' => 200, 'msg' => '删除成功'], 200);
     }
 
-    /**
-     * 获取角色详情
-     *
-     * @param  int      $id 角色ID
-     * @return Response 返回角色详情JSON响应
-     */
-    public function view(int $id): Response
-    {
-        $role = RoleDao::getInstance()->id($id);
-        if (!$role) {
-            return Response::asJson(['code' => 404, 'msg' => '角色不存在'], 404);
-        }
-
-        return Response::asJson(['code' => 200, 'data' => $role], 200);
-    }
 }

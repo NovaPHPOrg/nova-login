@@ -8,6 +8,7 @@ use nova\framework\core\Instance;
 use nova\framework\http\Request;
 use nova\framework\http\Response;
 use nova\framework\route\Route;
+use nova\plugin\login\route\PermissionRouter;
 use nova\plugin\tpl\ViewException;
 use nova\plugin\tpl\ViewResponse;
 
@@ -59,7 +60,15 @@ class LoginTpl extends Instance
 
         if (in_array($action, ['oidc','pwd','role','user'])) {
 
-            return $viewResponse->asTpl(ROOT_PATH . DS . 'nova/plugin/login/tpl/' . $action);
+            $data = [];
+
+            if ($action === 'role') {
+                $data = [
+                    'permissions' => PermissionRouter::getInstance()->permissions(),
+                ];
+            }
+
+            return $viewResponse->asTpl(ROOT_PATH . DS . 'nova/plugin/login/tpl/' . $action, $data);
         }
 
         return null;

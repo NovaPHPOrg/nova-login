@@ -7,6 +7,13 @@
     mdui-card {
         width: 100%;
     }
+
+    .permission-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 8px;
+    }
 </style>
 
 <div id="container" class="container">
@@ -29,12 +36,12 @@
                 <mdui-text-field label="角色名称" name="name" variant="outlined" required></mdui-text-field>
             </div>
             <div class="col-md12">
-                <mdui-text-field
-                    label="权限列表"
-                    name="permissions"
-                    variant="outlined"
-                    helper="多个权限用英文逗号分隔，例如: user_manage,read_notify"
-                ></mdui-text-field>
+                <label class="mdui-textfield">权限列表</label>
+                <div class="permission-group">
+                    {foreach $permissions as $key => $label}
+                        <mdui-checkbox name="permissions[]" value="{$key}" {if in_array($key, $rolePermissions ?? [])}checked{/if}>{$label}</mdui-checkbox>
+                    {/foreach}
+                </div>
             </div>
         </form>
     </mdui-dialog-form>

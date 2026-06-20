@@ -25,11 +25,18 @@ window.pageOnLoad = function (loading) {
                     align: "center",
                 },
                 {
-                    field: "permissions",
+                    field: "permissions_display",
                     name: "权限列表",
                     align: "center",
                     formatter: function (value, row, index) {
-                        return value && value.length ? value.join(", ") : "无权限";
+                        if (!value || !value.length) {
+                            return '<span class="mdui-text-color-secondary">无权限</span>';
+                        }
+                        let html = '';
+                        value.forEach(function (perm) {
+                            html += '<span class="tag badge-neutral permission-chip">' + perm + '</span>';
+                        });
+                        return html;
                     },
                 },
                 {
@@ -74,10 +81,8 @@ window.pageOnLoad = function (loading) {
             $.toaster.error("无法获取角色信息");
             return;
         }
-        $.request.get("/login/role/" + row.id, function (data) {
-            dialog.setValue(data);
-            dialog.open();
-        });
+        dialog.setValue(row);
+        dialog.open();
     });
 
     // 角色删除
@@ -101,7 +106,6 @@ window.pageOnLoad = function (loading) {
 
     // 新建角色
     $("#addRole").on("click", function () {
-        dialog.setValue({});
         dialog.open(true);
     });
 
