@@ -149,6 +149,7 @@ class SSOLoginManager extends BaseLoginManager
             ]);
             $user->display_name = $info[LoginConfig::getInstance()->ssoDisplayNameField] ?? $username;
             $user->avatar = $info[LoginConfig::getInstance()->ssoAvatarField] ?? $user->avatar;
+            UserDao::getInstance()->updateModel($user);
             return $user;
         }
 
