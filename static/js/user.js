@@ -37,7 +37,7 @@ window.pageOnLoad = function (loading) {
                         if (!value) {
                             return '<span class="badge badge-error">无角色</span>';
                         }
-                        return '<span class="badge badge-info">' + value + '</span>';
+                        return '<span class="badge badge-primary">' + value + '</span>';
                     },
                 },
                 {
