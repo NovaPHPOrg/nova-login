@@ -33,6 +33,16 @@ window.pageOnLoad = function () {
         }
     });
 
+    $.request.get("/login/pwd/config", {}, function (ret) {
+        if (ret.code !== 200) {
+            $.toaster.error(ret.msg);
+        } else {
+            $.form.val("#form_pwd",ret.data)
+
+        }
+    });
+
+
     window.pageOnUnLoad = function () {
         // 页面卸载时的清理工作
     };

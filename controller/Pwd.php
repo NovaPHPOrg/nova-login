@@ -47,20 +47,20 @@ class Pwd extends BaseAPIController
         // 验证当前密码
         if ($post['current_password'] ?? null) {
             if ($userDao->login($currentUser->username, $post['current_password']) === null) {
-                return Response::asJson(['code' => 400, 'msg' => '当前密码错误'], 400);
+                return Response::asJson(['code' => 400, 'msg' => '当前密码错误']);
             }
         } else {
-            return Response::asJson(['code' => 400, 'msg' => '请提供当前密码'], 400);
+            return Response::asJson(['code' => 400, 'msg' => '请提供当前密码']);
         }
 
         // 更新用户名（可选）
         if ($post['username'] ?? null) {
             if (!preg_match('/^[a-z0-9]{5,10}$/', $post['username'])) {
-                return Response::asJson(['code' => 400, 'msg' => '用户名格式错误'], 400);
+                return Response::asJson(['code' => 400, 'msg' => '用户名格式错误']);
             }
             $existing = $userDao->username($post['username']);
             if ($existing && $existing->id !== $currentUser->id) {
-                return Response::asJson(['code' => 400, 'msg' => '用户名已被使用'], 400);
+                return Response::asJson(['code' => 400, 'msg' => '用户名已被使用']);
             }
             $currentUser->username = $post['username'];
         }
@@ -68,7 +68,7 @@ class Pwd extends BaseAPIController
         // 更新密码（可选）
         if ($post['new_password'] ?? null) {
             if (strlen($post['new_password']) < 8) {
-                return Response::asJson(['code' => 400, 'msg' => '密码长度至少为8位'], 400);
+                return Response::asJson(['code' => 400, 'msg' => '密码长度至少为8位']);
             }
             $currentUser->password = password_hash($post['new_password'], PASSWORD_DEFAULT);
         }
