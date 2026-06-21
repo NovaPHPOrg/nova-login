@@ -21,9 +21,6 @@ abstract class BaseViewController extends Controller
 {
     // 当前登录用户模型
     protected ?UserModel $userModel = null;
-
-    protected array $menu = [];
-
     protected ViewResponse $viewResponse;
     /**
      * 初始化方法，进行域名和登录校验
@@ -64,20 +61,16 @@ abstract class BaseViewController extends Controller
 
         if (!$this->request->isPjax()) {
 
-            $menu = $this->getMenu();
-
-            EventManager::trigger('admin.menu', $menu);
-
-            $this->menu = Permission::getInstance()->filterMenu($menu, $this->userModel);
+            $menu = $this->getTotalMenu();
 
             Logger::debug('Permission filter result', [
                 'userId' => $this->userModel->id,
                 'username' => $this->userModel->username,
-                'menuItems' => $this->menu,
+                'menuItems' => $menu,
             ]);
 
             return $this->viewResponse->asTpl("layout", [
-                'menuConfig' => $this->menu ,
+                'menuConfig' => $menu ,
                 'userDisplayName' => $this->userModel->display_name !== ''
                     ? $this->userModel->display_name
                     : $this->userModel->username,
@@ -97,6 +90,15 @@ abstract class BaseViewController extends Controller
 
     abstract protected function getMenu(): array;
 
+    protected function getTotalMenu(): array
+    {
+        $menu = $this->getMenu();
+
+        EventManager::trigger('admin.menu', $menu);
+
+        return Permission::getInstance()->filterMenu($menu, $this->userModel);
+    }
+
     private function findFirstMenu(array $menus): string
     {
         foreach ($menus as $menu) {
@@ -111,7 +113,7 @@ abstract class BaseViewController extends Controller
     }
     protected function firstUri(): string
     {
-        return $this->findFirstMenu($this->menu);
+        return $this->findFirstMenu($this->getTotalMenu());
     }
 
 }

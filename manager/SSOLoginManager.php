@@ -41,7 +41,7 @@ class SSOLoginManager extends BaseLoginManager
         $state = uuid();
         Session::getInstance()->set('sso_state', $state);
 
-        return LoginConfig::getInstance()->ssoProviderUrl . '?' . http_build_query([
+        return LoginConfig::getInstance()->ssoProviderUrl . '/authorize?' . http_build_query([
             'client_id' => LoginConfig::getInstance()->ssoClientId,
             'redirect_uri' => $redirectUri,
             'response_type' => 'code',
@@ -108,14 +108,20 @@ class SSOLoginManager extends BaseLoginManager
      */
     protected function fetchUserInfo(string $token): ?array
     {
+
+        $url = LoginConfig::getInstance()->ssoUserInfoUrl;
+        if (!str_starts_with($url, 'http')) {
+            $url = LoginConfig::getInstance()->ssoProviderUrl.$url;
+        }
+
         $res = HttpClient::init()
             ->get()
             ->setHeader('Authorization', 'Bearer ' . $token)
-            ->send(LoginConfig::getInstance()->ssoUserInfoUrl);
+            ->send($url);
 
         Logger::debug('SSO user info response', [
             'httpCode' => $res->getHttpCode(),
-            'url' => LoginConfig::getInstance()->ssoUserInfoUrl,
+            'url' => $url,
         ]);
 
         return $res->getHttpCode() === 200 ? json_decode($res->getBody(), true) : null;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\controller;
 
+use nova\framework\core\Text;
 use nova\framework\http\Response;
 use nova\plugin\login\LoginConfig;
 
@@ -45,7 +46,7 @@ class Oidc extends BaseAPIController
 
         foreach ($fields as $field) {
             if (array_key_exists($field, $post)) {
-                $config->$field = $post[$field];
+                $config->$field = Text::parseType($config->$field, $post[$field]);
             }
         }
 

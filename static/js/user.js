@@ -5,6 +5,7 @@ window.pageLoadFiles = [
     'Request',
     'Toaster',
     'Loader',
+    'Layer'
 ];
 
 window.pageOnLoad = function (loading) {
