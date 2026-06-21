@@ -69,4 +69,9 @@ class RecordDao extends Dao
     {
         return $this->find(null, ['id' => $id]);
     }
+
+    public function deleteByUserId(int $userId): void
+    {
+        $this->delete()->where(['user_id' => $userId])->commit();
+    }
 }

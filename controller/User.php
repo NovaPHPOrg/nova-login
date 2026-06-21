@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace nova\plugin\login\controller;
 
 use nova\framework\http\Response;
+use nova\plugin\login\db\Dao\RecordDao;
 use nova\plugin\login\db\Dao\RoleDao;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
@@ -104,7 +105,13 @@ class User extends BaseAPIController
             return Response::asJson(['code' => 404, 'msg' => '用户不存在']);
         }
 
+        if ($this->userModel->id === $user->id) {
+            return Response::asJson(['code' => 400, 'msg' => '不能删除自己']);
+        }
+
         UserDao::getInstance()->deleteById($id);
+
+        RecordDao::getInstance()->deleteByUserId($id);
 
         return Response::asJson(['code' => 200, 'msg' => '删除成功']);
     }
