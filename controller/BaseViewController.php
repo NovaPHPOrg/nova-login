@@ -71,15 +71,22 @@ abstract class BaseViewController extends Controller
             Logger::debug('Permission filter result', [
                 'userId' => $this->userModel->id,
                 'username' => $this->userModel->username,
-                'menuItems' => count($menu),
+                'menuItems' => $menu,
             ]);
 
             return $this->viewResponse->asTpl("layout", [
                 'menuConfig' => $menu
             ]);
         }
+
+        $data = [
+            $this->viewResponse,
+            $this->userModel,
+            $this->request,
+        ];
+
         // 调用父类的初始化方法
-        return null;
+        return EventManager::trigger('admin.init', $data, true);
     }
 
     abstract protected function getMenu(): array;

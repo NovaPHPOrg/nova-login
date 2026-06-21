@@ -7,7 +7,6 @@ namespace nova\plugin\login;
 use Exception;
 use nova\framework\core\Logger;
 use nova\framework\core\StaticRegister;
-
 use nova\framework\event\EventManager;
 use nova\framework\route\ControllerException;
 use nova\framework\route\RouteTrait;
@@ -91,7 +90,7 @@ class LoginManager extends StaticRegister
 
             if ($routeObj !== null) {
                 try {
-                    Logger::debug('Route matched', [ 'uri' => $uri]);
+                    Logger::debug('Route matched', ['uri' => $uri]);
                     $routeObj->checkSelf();
                     $routeObj->run();
                 } catch (ControllerException $e) {
@@ -103,6 +102,11 @@ class LoginManager extends StaticRegister
 
         EventManager::addListener('admin.menu', function ($event, &$menu) {
             $menu[] = LoginTpl::getInstance()->menu();
+        });
+
+        EventManager::addListener('admin.init', function ($event, &$data) {
+            [$view, $user, $request] = $data;
+            return LoginTpl::getInstance()->route($view, $request);
         });
     }
 
