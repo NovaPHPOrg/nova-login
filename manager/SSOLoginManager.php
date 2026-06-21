@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace nova\plugin\login\manager;
 
 use nova\framework\core\Context;
+use nova\framework\core\Logger;
 use nova\framework\exception\AppExitException;
+
+use function nova\framework\uuid;
+
 use nova\plugin\avatar\Avatar;
 use nova\plugin\cookie\Session;
 use nova\plugin\http\HttpClient;
@@ -56,10 +60,15 @@ class SSOLoginManager extends BaseLoginManager
      */
     public function handleCallback(string $code, string $state): ?UserModel
     {
+        Logger::debug('SSO callback handler called', ['code' => !empty($code), 'state' => $state]);
+
         $storedState = Session::getInstance()->get('sso_state');
         if ($state !== $storedState) {
+            Logger::warning('SSO callback failed: invalid state');
             return null;
         }
+
+        Logger::debug('SSO state verified, fetching token');
 
         $response = HttpClient::init(LoginConfig::getInstance()->ssoProviderUrl)
             ->post([
@@ -71,16 +80,22 @@ class SSOLoginManager extends BaseLoginManager
             ], 'form')
             ->send('/token');
 
+        Logger::debug('SSO token response received', ['httpCode' => $response->getHttpCode()]);
+
         $data = json_decode($response->getBody(), true);
         if (!isset($data['access_token'])) {
+            Logger::warning('SSO callback failed: access_token not found', ['response' => $data]);
             return null;
         }
 
+        Logger::debug('SSO access token received, fetching user info');
         $userInfo = $this->fetchUserInfo($data['access_token']);
         if (!$userInfo || !isset($userInfo[LoginConfig::getInstance()->ssoUserField])) {
+            Logger::warning('SSO callback failed: user info not found');
             return null;
         }
 
+        Logger::debug('SSO user info received', ['username' => $userInfo[LoginConfig::getInstance()->ssoUserField]]);
         return $this->findOrCreateUser($userInfo);
     }
 
@@ -98,6 +113,11 @@ class SSOLoginManager extends BaseLoginManager
             ->setHeader('Authorization', 'Bearer ' . $token)
             ->send(LoginConfig::getInstance()->ssoUserInfoUrl);
 
+        Logger::debug('SSO user info response', [
+            'httpCode' => $res->getHttpCode(),
+            'url' => LoginConfig::getInstance()->ssoUserInfoUrl,
+        ]);
+
         return $res->getHttpCode() === 200 ? json_decode($res->getBody(), true) : null;
     }
 
@@ -111,15 +131,28 @@ class SSOLoginManager extends BaseLoginManager
     {
         $dao = UserDao::getInstance();
         $username = $info[LoginConfig::getInstance()->ssoUserField];
+        Logger::debug('SSO find or create user', ['username' => $username]);
+
         $user = $dao->username($username);
 
         if ($user) {
+            Logger::info('SSO user found', [
+                'userId' => $user->id,
+                'username' => $username,
+                'displayName' => $info[LoginConfig::getInstance()->ssoDisplayNameField] ?? $username,
+            ]);
             $user->display_name = $info[LoginConfig::getInstance()->ssoDisplayNameField] ?? $username;
             $user->avatar = $info[LoginConfig::getInstance()->ssoAvatarField] ?? $user->avatar;
             return $user;
         }
 
+        Logger::info('SSO user not found, checking creation policy', [
+            'username' => $username,
+            'mustHasAccount' => LoginConfig::getInstance()->ssoMustHasAccount,
+        ]);
+
         if (LoginConfig::getInstance()->ssoMustHasAccount) {
+            Logger::warning('SSO user creation denied: must have account', ['username' => $username]);
             return null;
         }
 
@@ -129,6 +162,12 @@ class SSOLoginManager extends BaseLoginManager
         $user->username = $username;
         $user->avatar = $info[LoginConfig::getInstance()->ssoAvatarField] ?? Avatar::toBase64(Avatar::svg($username));
         $dao->insertModel($user);
+
+        Logger::info('SSO user created', [
+            'userId' => $user->id,
+            'username' => $username,
+            'displayName' => $user->display_name,
+        ]);
 
         return $user;
     }

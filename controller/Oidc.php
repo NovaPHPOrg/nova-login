@@ -12,7 +12,7 @@ use nova\plugin\login\LoginConfig;
  *
  * 处理 OIDC/SAML 等单点登录配置
  */
-class Oidc extends BaseController
+class Oidc extends BaseAPIController
 {
     /**
      * 获取 OIDC 配置

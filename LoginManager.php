@@ -82,7 +82,7 @@ class LoginManager extends StaticRegister
      */
     public static function registerInfo(): void
     {
-        EventManager::addListener("route.before", function ($event, &$uri) {
+        EventManager::addListener('route.before', function ($event, $uri) {
             if (!str_starts_with($uri, "/login")) {
                 return;
             }
@@ -91,13 +91,19 @@ class LoginManager extends StaticRegister
 
             if ($routeObj !== null) {
                 try {
+                    Logger::debug('Route matched', [ 'uri' => $uri]);
                     $routeObj->checkSelf();
                     $routeObj->run();
                 } catch (ControllerException $e) {
                     // 静默处理控制器异常
+                    Logger::warning('Controller exception', ['uri' => $uri, 'code' => $e->getCode(), 'message' => $e->getMessage()]);
                 }
             }
         }, 500);
+
+        EventManager::addListener('admin.menu', function ($event, &$menu) {
+            $menu[] = LoginTpl::getInstance()->menu();
+        });
     }
 
     /**
@@ -108,6 +114,11 @@ class LoginManager extends StaticRegister
      */
     public function login(UserModel $user): bool
     {
+        Logger::debug('Login attempt', [
+            'userId' => $user->id,
+            'username' => $user->username,
+        ]);
+
         try {
             $loginRecords = RecordDao::getInstance()->records($user);
             $allowed = max(1, LoginConfig::getInstance()->allowedLoginCount);
@@ -115,15 +126,26 @@ class LoginManager extends StaticRegister
             while (count($loginRecords) >= $allowed) {
                 $oldest = array_pop($loginRecords);
                 if ($oldest instanceof RecordModel) {
+                    Logger::info('Expired login record deleted', ['recordId' => $oldest->id]);
                     RecordDao::getInstance()->deleteModel($oldest);
                 }
             }
 
             $record = RecordDao::getInstance()->add($user->id);
             Session::getInstance()->set('__record', $record);
+            Logger::info('User login successful', [
+                'userId' => $user->id,
+                'username' => $user->username,
+                'recordId' => $record->id,
+            ]);
             return true;
         } catch (Exception $e) {
-            Logger::error($e->getMessage(), $e->getTrace());
+            Logger::error('Login failed', [
+                'userId' => $user->id ?? 'unknown',
+                'username' => $user->username ?? 'unknown',
+                'message' => $e->getMessage(),
+                'trace' => $e->getTrace(),
+            ]);
             return false;
         }
     }
@@ -139,18 +161,23 @@ class LoginManager extends StaticRegister
         $requestUri = $_SERVER['REQUEST_URI'];
         $record = $session->get('__record');
 
+        Logger::debug('Checking login status', ['requestUri' => $requestUri, 'hasRecord' => $record !== null]);
+
         if (!$record instanceof RecordModel || RecordDao::getInstance()->id($record->id) === null) {
+            Logger::info('Login check failed: invalid record', ['requestUri' => $requestUri]);
             $this->setRedirectUriIfNeeded($requestUri);
             return null;
         }
 
         $user = $record->user();
         if (!$user instanceof UserModel) {
+            Logger::info('Login check failed: user not found', ['recordId' => $record->id, 'requestUri' => $requestUri]);
             Session::getInstance()->delete('__record');
             $this->setRedirectUriIfNeeded($requestUri);
             return null;
         }
 
+        Logger::debug('Login check passed', ['userId' => $user->id, 'username' => $user->username, 'requestUri' => $requestUri]);
         return $user;
     }
 
@@ -204,13 +231,16 @@ class LoginManager extends StaticRegister
         $record = $session->get('__record');
         $dao = RecordDao::getInstance();
 
+        Logger::debug('Logout attempt', ['hasRecord' => $record !== null]);
+
         try {
             if ($record instanceof RecordModel && $dao->id($record->id) !== null) {
                 $dao->deleteModel($record);
+                Logger::info('Login record deleted', ['recordId' => $record->id]);
             }
             return true;
         } catch (Throwable $e) {
-            Logger::error($e->getMessage(), $e->getTrace());
+            Logger::error('Logout failed', ['message' => $e->getMessage(), 'trace' => $e->getTrace()]);
             return false;
         } finally {
             $session->destroy();
@@ -224,10 +254,12 @@ class LoginManager extends StaticRegister
      */
     public function redirectLogin(): string
     {
+        Logger::debug('Redirect to login called');
         if (LoginConfig::getInstance()->ssoEnable) {
-            return SSOLoginManager::getInstance()->redirectToProvider();
+            $url = SSOLoginManager::getInstance()->redirectToProvider();
         } else {
-            return PwdLoginManager::getInstance()->redirectToProvider();
+            $url = PwdLoginManager::getInstance()->redirectToProvider();
         }
+        return $url;
     }
 }

@@ -6,11 +6,13 @@ namespace nova\plugin\login;
 
 use nova\framework\core\Instance;
 
+use nova\framework\exception\AppExitException;
 use nova\framework\http\Request;
 use nova\framework\http\Response;
 use nova\framework\route\Route;
 use nova\plugin\login\db\Dao\RoleDao;
-use nova\plugin\login\route\PermissionRouter;
+use nova\plugin\login\route\Permission;
+use nova\plugin\orm\exception\DbFieldError;
 use nova\plugin\tpl\ViewException;
 use nova\plugin\tpl\ViewResponse;
 
@@ -44,19 +46,17 @@ class LoginTpl extends Instance
     /**
      * 处理路由并返回模板响应
      *
-     * @param  ViewResponse  $viewResponse 视图响应对象
-     * @param  Request       $request      HTTP请求对象
-     * @return ?Response     视图响应
-     * @throws ViewException 模板异常
+     * @param  ViewResponse     $viewResponse 视图响应对象
+     * @param  Request          $request      HTTP请求对象
+     * @return ?Response        视图响应
+     * @throws ViewException    模板异常
+     * @throws AppExitException
+     * @throws DbFieldError
      */
     public function route(ViewResponse $viewResponse, Request $request): ?Response
     {
 
-        $uri = $request->getUri();
-        $parts = explode('?', $uri, 2);
-        if (count($parts) > 1) {
-            $uri = $parts[0];
-        }
+        $uri = $request->getPath();
         $data = explode('/', $uri);
         if (sizeof($data) !== 3) {
             return null;
@@ -70,7 +70,7 @@ class LoginTpl extends Instance
 
             if ($action === 'role') {
                 $data = [
-                    'permissions' => PermissionRouter::getInstance()->permissions(),
+                    'permissions' => Permission::getInstance()->permissions(),
                 ];
             } elseif ($action === 'user') {
                 $data = [
@@ -89,7 +89,6 @@ class LoginTpl extends Instance
         return [
             'title' => '登录管理',
             'icon' => 'vpn_key',
-            'url' => '/login/pwd/config',
             'pjax' => true,
             'sub' => [
                 [

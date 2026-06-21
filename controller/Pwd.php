@@ -13,7 +13,7 @@ use nova\plugin\login\db\Dao\UserDao;
  *
  * 处理用户修改密码等密码相关功能
  */
-class Pwd extends BaseController
+class Pwd extends BaseAPIController
 {
     /**
      * 获取密码配置
@@ -27,8 +27,8 @@ class Pwd extends BaseController
         return Response::asJson([
             'code' => 200,
             'data' => [
-                'username' => $this->user->username,
-                'display_name' => $this->user->display_name,
+                'username' => $this->userModel->username,
+                'display_name' => $this->userModel->display_name,
             ],
         ]);
     }
@@ -41,7 +41,7 @@ class Pwd extends BaseController
     public function save(): Response
     {
         $post = $this->request->post();
-        $currentUser = $this->user;
+        $currentUser = $this->userModel;
         $userDao = UserDao::getInstance();
 
         // 验证当前密码

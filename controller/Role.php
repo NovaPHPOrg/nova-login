@@ -4,22 +4,20 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\controller;
 
-use app\controller\manager\BaseController;
-
 use function nova\framework\dump;
 
 use nova\framework\http\Response;
 use nova\plugin\login\db\Dao\RoleDao;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\RoleModel;
-use nova\plugin\login\route\PermissionRouter;
+use nova\plugin\login\route\Permission;
 
 /**
  * 角色管理控制器
  *
  * 提供角色列表、创建、更新、删除、详情获取等管理功能
  */
-class Role extends BaseController
+class Role extends BaseAPIController
 {
     /**
      * 获取角色列表
@@ -40,7 +38,7 @@ class Role extends BaseController
 
         $result = RoleDao::getInstance()->getAll(null, $conditions, $page, $pageSize);
 
-        $permissions = PermissionRouter::getInstance()->permissions();
+        $permissions = Permission::getInstance()->permissions();
 
         // dump($permissions, $result);
 
@@ -70,7 +68,7 @@ class Role extends BaseController
      */
     public function permissions(): Response
     {
-        return Response::asJson(['code' => 200, 'data' => PermissionRouter::getInstance()->permissions()], 200);
+        return Response::asJson(['code' => 200, 'data' => Permission::getInstance()->permissions()], 200);
     }
 
     /**

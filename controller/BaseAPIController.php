@@ -8,7 +8,7 @@ use nova\framework\http\Response;
 use nova\framework\route\Controller;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\LoginManager;
-use nova\plugin\login\route\PermissionRouter;
+use nova\plugin\login\route\Permission;
 use nova\plugin\tpl\Pjax;
 
 /**
@@ -16,14 +16,14 @@ use nova\plugin\tpl\Pjax;
  *
  * 提供用户登录状态检查和权限验证功能
  */
-class BaseController extends Controller
+class BaseAPIController extends Controller
 {
     /**
      * 当前登录用户
      *
      * @var UserModel|null
      */
-    protected ?UserModel $user = null;
+    protected ?UserModel $userModel = null;
 
     /**
      * 初始化控制器
@@ -34,13 +34,14 @@ class BaseController extends Controller
      */
     public function init(): ?Response
     {
-        $this->user = LoginManager::getInstance()->checkLogin();
-        if ($this->user === null) {
-            return Pjax::redirectTo("/login");
+        $this->userModel = LoginManager::getInstance()->checkLogin();
+        if ($this->userModel === null) {
+            $uri = LoginManager::getInstance()->redirectLogin();
+            return Pjax::redirectTo($uri);
         }
 
-        if (!PermissionRouter::getInstance()->hasPermission($this->request, $this->user)) {
-            return Pjax::redirectTo("/403");
+        if (!Permission::getInstance()->hasPermission($this->userModel)) {
+            return Pjax::responseErrorJson(403);
         }
 
         return null;

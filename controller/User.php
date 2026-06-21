@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\controller;
 
-use app\controller\manager\BaseController;
 use nova\framework\http\Response;
 use nova\plugin\login\db\Dao\RoleDao;
 use nova\plugin\login\db\Dao\UserDao;
@@ -15,7 +14,7 @@ use nova\plugin\login\db\Model\UserModel;
  *
  * 提供用户列表、创建、更新、删除、详情获取等管理功能
  */
-class User extends BaseController
+class User extends BaseAPIController
 {
     /**
      * 获取用户列表
