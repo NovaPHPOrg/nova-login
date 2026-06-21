@@ -22,6 +22,8 @@ abstract class BaseViewController extends Controller
     // 当前登录用户模型
     protected ?UserModel $userModel = null;
 
+    protected array $menu = [];
+
     protected ViewResponse $viewResponse;
     /**
      * 初始化方法，进行域名和登录校验
@@ -66,16 +68,20 @@ abstract class BaseViewController extends Controller
 
             EventManager::trigger('admin.menu', $menu);
 
-            $menu = Permission::getInstance()->filterMenu($menu, $this->userModel);
+            $this->menu = Permission::getInstance()->filterMenu($menu, $this->userModel);
 
             Logger::debug('Permission filter result', [
                 'userId' => $this->userModel->id,
                 'username' => $this->userModel->username,
-                'menuItems' => $menu,
+                'menuItems' => $this->menu,
             ]);
 
             return $this->viewResponse->asTpl("layout", [
-                'menuConfig' => $menu
+                'menuConfig' => $this->menu ,
+                'userDisplayName' => $this->userModel->display_name !== ''
+                    ? $this->userModel->display_name
+                    : $this->userModel->username,
+                'userRole' => $this->userModel->role()->name,
             ]);
         }
 
@@ -90,4 +96,22 @@ abstract class BaseViewController extends Controller
     }
 
     abstract protected function getMenu(): array;
+
+    private function findFirstMenu(array $menus): string
+    {
+        foreach ($menus as $menu) {
+            if (isset($menu['url'])) {
+                return $menu['url'];
+            }
+            if (isset($menu['sub'])) {
+                return $this->findFirstMenu($menu['sub']);
+            }
+        }
+        return '/';
+    }
+    protected function firstUri(): string
+    {
+        return $this->findFirstMenu($this->menu);
+    }
+
 }
