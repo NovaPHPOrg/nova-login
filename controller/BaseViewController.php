@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace nova\plugin\login\controller;
 
 use app\Application;
-
 use nova\framework\core\Logger;
-
 use nova\framework\event\EventManager;
 use nova\framework\http\Response;
 use nova\framework\route\Controller;
@@ -45,6 +43,8 @@ abstract class BaseViewController extends Controller
                 'userId' => $this->userModel->id,
                 'username' => $this->userModel->username,
                 'uri' => $_SERVER['REQUEST_URI'] ?? 'unknown',
+                'role' => $this->userModel->role,
+                'permissions' => $this->userModel->role()->permissions
             ]);
             return Pjax::responseError(403);
         }

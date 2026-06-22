@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\controller;
 
-use function nova\framework\dump;
-
 use nova\framework\http\Response;
 use nova\plugin\login\db\Dao\RoleDao;
 use nova\plugin\login\db\Dao\UserDao;
@@ -81,7 +79,9 @@ class Role extends BaseAPIController
         $dao = RoleDao::getInstance();
         $data = $this->request->post();
         $id = (int)$this->request->post('id', 0);
-
+        if ($id == 1) {
+            return Response::asJson(['code' => 404, 'msg' => '默认角色禁止修改']);
+        }
         // 验证权限列表
         if (isset($data['permissions']) && !is_array($data['permissions'])) {
             $data['permissions'] = [$data['permissions']];
@@ -118,6 +118,9 @@ class Role extends BaseAPIController
     public function remove(): Response
     {
         $id = (int)$this->request->post('id', 0);
+        if ($id == 1) {
+            return Response::asJson(['code' => 404, 'msg' => '默认角色禁止删除']);
+        }
         $role = RoleDao::getInstance()->id($id);
 
         if (!$role) {
