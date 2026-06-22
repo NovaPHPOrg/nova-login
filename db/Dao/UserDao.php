@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\db\Dao;
 
+use Exception;
 use nova\framework\core\Logger;
 use nova\plugin\avatar\Avatar;
 use nova\plugin\login\db\Model\UserModel;
@@ -26,7 +27,7 @@ class UserDao extends Dao
      * 生成随机密码并记录到日志和文件中，方便管理员首次登录
      *
      * @return void
-     * @throws \Exception
+     * @throws Exception
      */
     public function onCreateTable(): void
     {
