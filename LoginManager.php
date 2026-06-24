@@ -100,6 +100,10 @@ class LoginManager extends StaticRegister
             }
         }, 500);
 
+        EventManager::addListener('admin.router', function ($event, $route) {
+            LoginTpl::getInstance()->registerRouter($route[0], $route[1]);
+        });
+
         EventManager::addListener('admin.menu', function ($event, &$menu) {
             $menu[] = LoginTpl::getInstance()->menu();
         });
