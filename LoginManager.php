@@ -17,7 +17,6 @@ use nova\plugin\login\db\Model\RecordModel;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\manager\PwdLoginManager;
 use nova\plugin\login\manager\SSOLoginManager;
-use nova\plugin\login\route\LoginRouteObject;
 use Throwable;
 
 /**
@@ -37,6 +36,7 @@ class LoginManager extends StaticRegister
      */
     public function __construct()
     {
+        $this->controllerNamespace = 'nova\\plugin\\login\\controller\\';
         $this->registerRoutes();
     }
 
@@ -48,30 +48,30 @@ class LoginManager extends StaticRegister
     private function registerRoutes(): void
     {
         // 不需要权限
-        $this->get('/login', LoginRouteObject::build('index', 'index'));
-        $this->get('/login/captcha', LoginRouteObject::build('index', 'captcha'));
-        $this->post('/login', LoginRouteObject::build('index', 'login'));
-        $this->get('/login/logout', LoginRouteObject::build('index', 'logout'));
-        $this->get('/login/callback', LoginRouteObject::build('index', 'callback'));
+        $this->get('/login', $this->map('index', 'index'));
+        $this->get('/login/captcha', $this->map('index', 'captcha'));
+        $this->post('/login', $this->map('index', 'login'));
+        $this->get('/login/logout', $this->map('index', 'logout'));
+        $this->get('/login/callback', $this->map('index', 'callback'));
 
-        $this->get('/login/pwd/config', LoginRouteObject::build('pwd', 'config'));
-        $this->post('/login/pwd/config', LoginRouteObject::build('pwd', 'save'));
+        $this->get('/login/pwd/config', $this->map('pwd', 'config'));
+        $this->post('/login/pwd/config', $this->map('pwd', 'save'));
 
         // OIDC认证登录
-        $this->get('/login/oidc/config', LoginRouteObject::build('oidc', 'config'));
-        $this->post('/login/oidc/config', LoginRouteObject::build('oidc', 'save'));
+        $this->get('/login/oidc/config', $this->map('oidc', 'config'));
+        $this->post('/login/oidc/config', $this->map('oidc', 'save'));
 
         // 用户列表
-        $this->get('/login/user/list', LoginRouteObject::build('user', 'list'));
-        $this->post('/login/user/update', LoginRouteObject::build('user', 'update'));
-        $this->post('/login/user/remove', LoginRouteObject::build('user', 'remove'));
-        $this->get('/login/user/{id}', LoginRouteObject::build('user', 'view'));
+        $this->get('/login/user/list', $this->map('user', 'list'));
+        $this->post('/login/user/update', $this->map('user', 'update'));
+        $this->post('/login/user/remove', $this->map('user', 'remove'));
+        $this->get('/login/user/{id}', $this->map('user', 'view'));
 
         // 角色列表
-        $this->get('/login/role/list', LoginRouteObject::build('role', 'list'));
-        $this->post('/login/role/update', LoginRouteObject::build('role', 'update'));
-        $this->post('/login/role/remove', LoginRouteObject::build('role', 'remove'));
-        $this->get('/login/role/{id}', LoginRouteObject::build('role', 'view'));
+        $this->get('/login/role/list', $this->map('role', 'list'));
+        $this->post('/login/role/update', $this->map('role', 'update'));
+        $this->post('/login/role/remove', $this->map('role', 'remove'));
+        $this->get('/login/role/{id}', $this->map('role', 'view'));
     }
 
     /**
