@@ -48,19 +48,6 @@ class Index extends Controller
     }
 
     /**
-     * 输出静态资源
-     *
-     * @param  string   $file 文件名
-     * @return Response 返回静态资源响应
-     */
-    public function static($file): Response
-    {
-        $file = urldecode($file);
-        $file = str_replace("..", "", $file);
-        return Response::asStatic(ROOT_PATH . '/nova/plugin/login/static/' . $file);
-    }
-
-    /**
      * 输出验证码
      *
      * @return Response 返回验证码图片响应

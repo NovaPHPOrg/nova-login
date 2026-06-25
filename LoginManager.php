@@ -7,6 +7,9 @@ namespace nova\plugin\login;
 use Exception;
 use nova\framework\core\Logger;
 use nova\framework\core\StaticRegister;
+use nova\framework\event\EventManager;
+use nova\framework\exception\AppExitException;
+use nova\framework\http\Response;
 use nova\framework\route\RouteTrait;
 use nova\plugin\cookie\Session;
 use nova\plugin\login\db\Dao\RecordDao;
@@ -46,7 +49,6 @@ class LoginManager extends StaticRegister
     {
         // 不需要权限
         $this->get('/login', LoginRouteObject::build('index', 'index'));
-        $this->get('/login/static/{file}', LoginRouteObject::build('index', 'static'));
         $this->get('/login/captcha', LoginRouteObject::build('index', 'captcha'));
         $this->post('/login', LoginRouteObject::build('index', 'login'));
         $this->get('/login/logout', LoginRouteObject::build('index', 'logout'));
@@ -81,6 +83,41 @@ class LoginManager extends StaticRegister
     {
         self::getInstance()->bindPrefixDispatch('/login');
         AdminPage::bind(LoginTpl::getInstance());
+
+        // 插件静态资源统一入口：/{plugin}/static/{file}，公开访问，无需权限
+        // 优先级高于插件前缀分发（500），命中即直接输出文件
+        EventManager::addListener('route.before', function ($event, $uri) {
+            self::serveStaticAsset($uri);
+        }, 100);
+    }
+
+    /**
+     * 服务插件静态资源
+     *
+     * 约定所有插件静态资源位于 nova/plugin/{plugin}/static/ 下，
+     * 通过 /{plugin}/static/{file} 统一访问。命中且文件合法时直接输出并终止请求；
+     * 否则静默返回，交由后续路由处理。
+     *
+     * @param  string           $uri 当前请求 URI
+     * @throws AppExitException 命中静态资源时抛出以输出响应
+     */
+    private static function serveStaticAsset(string $uri): void
+    {
+        if (!preg_match('#^/([a-z0-9_]+)/static/(.+)$#i', $uri, $matches)) {
+            return;
+        }
+
+        $base = realpath(ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . $matches[1] . DS . 'static');
+        if ($base === false) {
+            return;
+        }
+
+        $real = realpath($base . DS . urldecode($matches[2]));
+        if ($real === false || !str_starts_with($real, $base . DS)) {
+            return;
+        }
+
+        throw new AppExitException(Response::asStatic($real));
     }
 
     /**
