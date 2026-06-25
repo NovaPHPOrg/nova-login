@@ -46,19 +46,19 @@ class LoginTpl extends Instance implements AdminPageInterface
     /**
      * 处理路由并返回模板响应
      *
-     * @param  ViewResponse     $viewResponse 视图响应对象
-     * @param  Request          $request      HTTP请求对象
+     * @param  ViewResponse     $view    视图响应对象
+     * @param  Request          $request HTTP请求对象
      * @return ?Response        视图响应
      * @throws ViewException    模板异常
      * @throws AppExitException
      * @throws DbFieldError
      */
-    public function route(ViewResponse $viewResponse, Request $request): ?Response
+    public function route(ViewResponse $view, Request $request): ?Response
     {
 
         $uri = $request->getPath();
         $data = explode('/', $uri);
-        if (sizeof($data) !== 3) {
+        if (sizeof($data) !== 3 || $data[1] !== 'login') {
             return null;
         }
 
@@ -78,7 +78,7 @@ class LoginTpl extends Instance implements AdminPageInterface
                 ];
             }
 
-            return $viewResponse->asTpl(ROOT_PATH . DS . 'nova/plugin/login/tpl/' . $action, $data);
+            return $view->asTpl(ROOT_PATH . DS . 'nova/plugin/login/tpl/' . $action, $data);
         }
 
         return null;

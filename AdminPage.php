@@ -28,7 +28,11 @@ final class AdminPage
         });
 
         EventManager::addListener('admin.menu', function ($event, &$menu) use ($page) {
-            $menu[] = $page->menu();
+            $item = $page->menu();
+            // 允许页面返回空菜单以退出菜单展示（仅注册路由/渲染）
+            if (!empty($item)) {
+                $menu[] = $item;
+            }
         });
 
         EventManager::addListener('admin.init', function ($event, &$data) use ($page) {
