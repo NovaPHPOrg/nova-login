@@ -7,8 +7,6 @@ namespace nova\plugin\login;
 use Exception;
 use nova\framework\core\Logger;
 use nova\framework\core\StaticRegister;
-use nova\framework\event\EventManager;
-use nova\framework\route\ControllerException;
 use nova\framework\route\RouteTrait;
 use nova\plugin\cookie\Session;
 use nova\plugin\login\db\Dao\RecordDao;
@@ -81,37 +79,8 @@ class LoginManager extends StaticRegister
      */
     public static function registerInfo(): void
     {
-        EventManager::addListener('route.before', function ($event, $uri) {
-            if (!str_starts_with($uri, "/login")) {
-                return;
-            }
-
-            $routeObj = self::getInstance()->dispatch($uri, $_SERVER['REQUEST_METHOD']);
-
-            if ($routeObj !== null) {
-                try {
-                    Logger::debug('Route matched', ['uri' => $uri]);
-                    $routeObj->checkSelf();
-                    $routeObj->run();
-                } catch (ControllerException $e) {
-                    // 静默处理控制器异常
-                    Logger::warning('Controller exception', ['uri' => $uri, 'code' => $e->getCode(), 'message' => $e->getMessage()]);
-                }
-            }
-        }, 500);
-
-        EventManager::addListener('admin.router', function ($event, $route) {
-            LoginTpl::getInstance()->registerRouter($route[0], $route[1]);
-        });
-
-        EventManager::addListener('admin.menu', function ($event, &$menu) {
-            $menu[] = LoginTpl::getInstance()->menu();
-        });
-
-        EventManager::addListener('admin.init', function ($event, &$data) {
-            [$view, $user, $request] = $data;
-            return LoginTpl::getInstance()->route($view, $request);
-        });
+        self::getInstance()->bindPrefixDispatch('/login');
+        AdminPage::bind(LoginTpl::getInstance());
     }
 
     /**

@@ -24,7 +24,7 @@ use nova\plugin\tpl\ViewResponse;
  * @package nova\plugin\login
  * @since 1.0.0
  */
-class LoginTpl extends Instance
+class LoginTpl extends Instance implements AdminPageInterface
 {
     /**
      * 注册登录页面路由
