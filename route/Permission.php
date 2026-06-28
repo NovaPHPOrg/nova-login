@@ -52,9 +52,7 @@ class Permission extends Instance
     {
         $role = $userModel->role();
 
-        if (empty($role->permissions)) {
-            return false;
-        }
+
 
         if (in_array('all', $role->permissions)) {
             return true;
