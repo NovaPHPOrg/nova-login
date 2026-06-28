@@ -13,6 +13,7 @@ use nova\framework\http\Response;
 use nova\framework\route\RouteTrait;
 use nova\plugin\cookie\Session;
 use nova\plugin\login\db\Dao\RecordDao;
+use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\RecordModel;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\manager\PwdLoginManager;
@@ -84,6 +85,7 @@ class LoginManager extends StaticRegister
         self::getInstance()->bindPrefixDispatch('/login');
         AdminPage::bind(LoginTpl::getInstance());
 
+        UserDao::getInstance()->initTable();
         // 插件静态资源统一入口：/{plugin}/static/{file}，公开访问，无需权限
         // 优先级高于插件前缀分发（500），命中即直接输出文件
         EventManager::addListener('route.before', function ($event, $uri) {
