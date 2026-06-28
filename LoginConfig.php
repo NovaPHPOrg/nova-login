@@ -28,6 +28,11 @@ class LoginConfig extends ConfigObject
     public string $loginCallback = '/';
 
     /**
+     * @var string 退出登录后的跳转地址
+     */
+    public string $logoutRedirect = '/';
+
+    /**
      * @var string 系统名称
      */
     public string $systemName = Application::SYSTEM_NAME;

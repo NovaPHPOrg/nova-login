@@ -55,6 +55,17 @@
                     ></mdui-text-field>
                 </div>
 
+                <div class="col-xs-12 col-md-6">
+                    <mdui-text-field
+                        label="退出登录跳转"
+                        name="logoutRedirect"
+                        type="text"
+                        variant="outlined"
+                        required
+                        helper="退出登录后跳转的页面路径"
+                    ></mdui-text-field>
+                </div>
+
                 <div class="col-xs-12 headline-small mt-4 mb-2">SSO 设置</div>
 
                 <div class="col-xs-12 col-md-6 center-vertical">

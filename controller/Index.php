@@ -107,7 +107,7 @@ class Index extends Controller
             Logger::info('User logout', ['userId' => $user->id, 'username' => $user->username]);
         }
         LoginManager::getInstance()->logout();
-        return Pjax::redirectTo("/login");
+        return Pjax::redirectTo(LoginConfig::getInstance()->logoutRedirect);
     }
 
     /**

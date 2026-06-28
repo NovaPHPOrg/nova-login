@@ -38,13 +38,7 @@ class Oidc extends BaseAPIController
         $post = $this->request->post();
         $config = LoginConfig::getInstance();
 
-        $fields = [
-            'ssoEnable', 'ssoMustHasAccount', 'ssoProviderUrl', 'ssoClientId',
-            'ssoClientSecret', 'ssoUserField', 'ssoUserInfoUrl', 'ssoDisplayNameField',
-            'ssoAvatarField', 'allowedLoginCount', 'loginCallback', 'systemName'
-        ];
-
-        foreach ($fields as $field) {
+        foreach (array_keys(get_object_vars($config)) as $field) {
             if (array_key_exists($field, $post)) {
                 $config->$field = Text::parseType($config->$field, $post[$field]);
             }
