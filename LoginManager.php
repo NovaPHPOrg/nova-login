@@ -85,7 +85,6 @@ class LoginManager extends StaticRegister
         self::getInstance()->bindPrefixDispatch('/login');
         AdminPage::bind(LoginTpl::getInstance());
 
-        UserDao::getInstance()->initTable();
         // 插件静态资源统一入口：/{plugin}/static/{file}，公开访问，无需权限
         // 优先级高于插件前缀分发（500），命中即直接输出文件
         EventManager::addListener('route.before', function ($event, $uri) {
@@ -173,6 +172,7 @@ class LoginManager extends StaticRegister
      */
     public function checkLogin(): ?UserModel
     {
+        UserDao::getInstance()->initTable();
         $session = Session::getInstance();
         $requestUri = $_SERVER['REQUEST_URI'];
         $record = $session->get('__record');
