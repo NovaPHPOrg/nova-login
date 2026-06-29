@@ -40,7 +40,8 @@ class LoginTpl extends Instance implements AdminPageInterface
             ->get('/login/pwd', $default)
             ->get('/login/oidc', $default)
             ->get('/login/user', $default)
-            ->get('/login/role', $default);
+            ->get('/login/role', $default)
+            ->get('/login/record', $default);
     }
 
     /**
@@ -64,7 +65,7 @@ class LoginTpl extends Instance implements AdminPageInterface
 
         $action = trim($data[2]);
 
-        if (in_array($action, ['oidc','pwd','role','user'])) {
+        if (in_array($action, ['oidc','pwd','role','user','record'])) {
 
             $data = [];
 
@@ -107,6 +108,12 @@ class LoginTpl extends Instance implements AdminPageInterface
                     'title' => '账户安全',
                     'icon' => 'security',
                     'url' => '/login/pwd',
+                    'pjax' => true,
+                ],
+                [
+                    'title' => '登录记录',
+                    'icon' => 'history',
+                    'url' => '/login/record',
                     'pjax' => true,
                 ],
                 [

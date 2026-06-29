@@ -64,6 +64,8 @@ class LoginManager extends StaticRegister
 
         // 用户列表
         $this->get('/login/user/list', $this->map('user', 'list'));
+        $this->get('/login/user/records', $this->map('user', 'records'));
+        $this->post('/login/user/kick', $this->map('user', 'kick'));
         $this->post('/login/user/update', $this->map('user', 'update'));
         $this->post('/login/user/remove', $this->map('user', 'remove'));
         $this->get('/login/user/{id}', $this->map('user', 'view'));

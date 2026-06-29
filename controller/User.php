@@ -116,4 +116,53 @@ class User extends BaseAPIController
         return Response::asJson(['code' => 200, 'msg' => '删除成功']);
     }
 
+    public function records(): Response
+    {
+        $page = (int)$this->request->get('page', 1);
+        $pageSize = (int)$this->request->get('pageSize', 10);
+
+        $result = RecordDao::getInstance()->getAll(
+            null,
+            ['user_id' => $this->userModel->id],
+            $page,
+            $pageSize,
+            'id',
+            false
+        );
+
+        $currentRecord = \nova\plugin\cookie\Session::getInstance()->get('__record');
+        $currentRecordId = $currentRecord instanceof \nova\plugin\login\db\Model\RecordModel ? $currentRecord->id : 0;
+
+        foreach ($result['data'] as &$row) {
+            $row['is_current'] = (int)$row['id'] === $currentRecordId;
+        }
+
+        return Response::asJson([
+            'code' => 200,
+            'data' => $result['data'],
+            'count' => $result['total'],
+        ]);
+    }
+
+    public function kick(): Response
+    {
+        $id = (int)$this->request->post('id', 0);
+        if ($id <= 0) {
+            return Response::asJson(['code' => 400, 'msg' => '参数错误']);
+        }
+
+        $record = RecordDao::getInstance()->id($id);
+        if (!$record || $record->user_id !== $this->userModel->id) {
+            return Response::asJson(['code' => 403, 'msg' => '无权操作']);
+        }
+
+        $currentRecord = \nova\plugin\cookie\Session::getInstance()->get('__record');
+        if ($currentRecord instanceof \nova\plugin\login\db\Model\RecordModel && $currentRecord->id === $id) {
+            return Response::asJson(['code' => 400, 'msg' => '不能踢掉当前会话']);
+        }
+
+        RecordDao::getInstance()->deleteModel($record);
+        return Response::asJson(['code' => 200, 'msg' => '已将该设备踢下线']);
+    }
+
 }
