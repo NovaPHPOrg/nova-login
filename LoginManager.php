@@ -210,6 +210,10 @@ class LoginManager extends StaticRegister
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             return;
         }
+        // 悬停预取不是真实导航：记下它会让用户登录后落到划过的那一项，而不是真正点的那个
+        if (($_SERVER['HTTP_X_PJAX_PREFETCH'] ?? '') === 'true') {
+            return;
+        }
         if ($uri !== "/login") {
             $this->setRedirectUri($uri);
         }
