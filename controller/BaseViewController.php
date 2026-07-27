@@ -51,32 +51,17 @@ abstract class BaseViewController extends Controller
 
         $this->viewResponse = new ViewResponse();
 
-        $this->viewResponse->init(
-            '',
-            [
-                'title' => Application::SYSTEM_NAME,
-                'user' => $this->userModel,
-            ]
-        );
-
-        if (!$this->request->isPjax()) {
-
-            $menu = $this->getTotalMenu();
-
-            Logger::debug('Permission filter result', [
-                'userId' => $this->userModel->id,
-                'username' => $this->userModel->username,
-                'menuItems' => $menu,
-            ]);
-
-            return $this->viewResponse->asTpl("layout", [
-                'menuConfig' => $menu ,
-                'userDisplayName' => $this->userModel->display_name !== ''
-                    ? $this->userModel->display_name
-                    : $this->userModel->username,
-                'userRole' => $this->userModel->role()->name,
-            ]);
-        }
+        // 非 PJAX 首屏用 layout 包裹（子页渲染进 layout 的 <template id="page">，前端首屏零请求）；
+        // PJAX 时不套 layout，只输出片段。
+        $this->viewResponse->init($this->request->isPjax() ? '' : 'layout', [
+            'title' => Application::SYSTEM_NAME,
+            'user' => $this->userModel,
+            'menuConfig' => $this->getTotalMenu(),
+            'userDisplayName' => $this->userModel->display_name !== ''
+                ? $this->userModel->display_name
+                : $this->userModel->username,
+            'userRole' => $this->userModel->role()->name,
+        ]);
 
         $data = [
             $this->viewResponse,
