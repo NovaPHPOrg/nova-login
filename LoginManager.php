@@ -207,7 +207,7 @@ class LoginManager extends StaticRegister
      */
     private function setRedirectUriIfNeeded(string $uri): void
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
             return;
         }
         // 悬停预取不是真实导航：记下它会让用户登录后落到划过的那一项，而不是真正点的那个
