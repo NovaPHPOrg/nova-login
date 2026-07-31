@@ -61,6 +61,7 @@ abstract class BaseViewController extends Controller
                 ? $this->userModel->display_name
                 : $this->userModel->username,
             'userRole' => $this->userModel->role()->name,
+            ...$this->initData()
         ]);
 
         $data = [
@@ -101,4 +102,8 @@ abstract class BaseViewController extends Controller
         return $this->findFirstMenu($this->getTotalMenu());
     }
 
+    protected function initData(): array
+    {
+        return [];
+    }
 }
