@@ -82,8 +82,11 @@
         .login-logo {
             width: min(5.5rem, 28vw);
             height: auto;
+            aspect-ratio: 1 / 1;
             margin: 0 auto 1.25rem;
             display: block;
+            object-fit: cover;
+            border-radius: 22%;
             filter: drop-shadow(0 4px 12px rgba(var(--mdui-color-shadow), 0.35));
         }
 
