@@ -75,19 +75,6 @@ class UserModel extends Model
     }
 
     /**
-     * 获取不需要HTML转义的字段
-     *
-     * 返回在输出时不需要进行HTML转义的字段数组
-     * 通常包括已经过安全处理的字段，如密码哈希值
-     *
-     * @return array 不需要HTML转义的字段数组
-     */
-    public function getNoEscape(): array
-    {
-        return ['password'];
-    }
-
-    /**
      * 获取表结构版本号
      *
      * @return int 表结构版本号
