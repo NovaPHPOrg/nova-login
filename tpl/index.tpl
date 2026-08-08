@@ -164,6 +164,10 @@
             transform: translateX(-50%) translateY(0);
         }
     </style>
+    <script src="/static/bundle?file=
+    framework/libs/vhcheck.min.js,
+    framework/libs/mdui.global.min.js
+    &type=js&v={$__v}"></script>
 </head>
 
 <body>
@@ -214,8 +218,6 @@
     </div>
 
     <script src="/static/bundle?file=
-    framework/libs/vhcheck.min.js,
-    framework/libs/mdui.global.min.js,
     framework/bootloader.js,
     framework/utils/Loading.js,
     framework/utils/Logger.js,
