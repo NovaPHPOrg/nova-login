@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace nova\plugin\login\controller;
 
 use nova\framework\http\Response;
+use nova\plugin\cookie\Session;
 use nova\plugin\login\db\Dao\RecordDao;
 use nova\plugin\login\db\Dao\RoleDao;
 use nova\plugin\login\db\Dao\UserDao;
+use nova\plugin\login\db\Model\RecordModel;
 use nova\plugin\login\db\Model\UserModel;
 
 /**
@@ -130,8 +132,8 @@ class User extends BaseAPIController
             false
         );
 
-        $currentRecord = \nova\plugin\cookie\Session::getInstance()->get('__record');
-        $currentRecordId = $currentRecord instanceof \nova\plugin\login\db\Model\RecordModel ? $currentRecord->id : 0;
+        $currentRecord = Session::getInstance()->get('__record');
+        $currentRecordId = $currentRecord instanceof RecordModel ? $currentRecord->id : 0;
 
         foreach ($result['data'] as &$row) {
             $row['is_current'] = (int)$row['id'] === $currentRecordId;
@@ -156,8 +158,8 @@ class User extends BaseAPIController
             return Response::asJson(['code' => 403, 'msg' => '无权操作']);
         }
 
-        $currentRecord = \nova\plugin\cookie\Session::getInstance()->get('__record');
-        if ($currentRecord instanceof \nova\plugin\login\db\Model\RecordModel && $currentRecord->id === $id) {
+        $currentRecord = Session::getInstance()->get('__record');
+        if ($currentRecord instanceof RecordModel && $currentRecord->id === $id) {
             return Response::asJson(['code' => 400, 'msg' => '不能踢掉当前会话']);
         }
 
