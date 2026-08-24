@@ -77,37 +77,65 @@ class Role extends BaseAPIController
     public function update(): Response
     {
         $dao = RoleDao::getInstance();
-        $data = $this->request->post();
         $id = (int)$this->request->post('id', 0);
-        if ($id == 1) {
+        if ($id === 1) {
             return Response::asJson(['code' => 404, 'msg' => '默认角色禁止修改']);
         }
-        // 验证权限列表
-        if (isset($data['permissions']) && !is_array($data['permissions'])) {
-            $data['permissions'] = [$data['permissions']];
-        }
 
-        // 验证角色名称
-        $name = trim($this->request->post('name', ''));
+        $name = trim((string)$this->request->post('name', ''));
         if ($name === '') {
             return Response::asJson(['code' => 400, 'msg' => '角色名称不能为空'], 400);
         }
 
+        $permissions = $this->normalizePermissions($this->request->post('permissions'));
+
         if ($id > 0) {
             $model = $dao->id($id);
-            if ($model) {
-                $model = new RoleModel($data);
-                $dao->updateModel($model);
-                return Response::asJson(['code' => 200, 'msg' => '保存成功', 'data' => $model]);
+            if (!$model) {
+                return Response::asJson(['code' => 404, 'msg' => '角色不存在']);
             }
-            return Response::asJson(['code' => 404, 'msg' => '角色不存在']);
+
+            $model->name = $name;
+            $model->permissions = $permissions;
+            $dao->updateModel($model);
+
+            return Response::asJson(['code' => 200, 'msg' => '保存成功', 'data' => $model]);
         }
 
-        // 修复：去掉 insertModel 末尾多余逗号
-        $model = new RoleModel($data);
-        $model->id = $dao->insertModel($model);  // 修复：删除末尾逗号
+        $model = new RoleModel([
+            'name' => $name,
+            'permissions' => $permissions,
+        ]);
+        $model->id = $dao->insertModel($model);
 
         return Response::asJson(['code' => 200, 'msg' => '保存成功', 'data' => $model]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function normalizePermissions(mixed $raw): array
+    {
+        if ($raw === null || $raw === '' || $raw === false) {
+            return [];
+        }
+
+        $list = is_array($raw) ? $raw : [$raw];
+        $allowed = array_keys(Permission::getInstance()->permissions());
+
+        $normalized = [];
+        foreach ($list as $item) {
+            if (!is_string($item) && !is_int($item)) {
+                continue;
+            }
+            $key = trim((string)$item);
+            if ($key === '' || !in_array($key, $allowed, true)) {
+                continue;
+            }
+            $normalized[] = $key;
+        }
+
+        return array_values(array_unique($normalized));
     }
 
     /**

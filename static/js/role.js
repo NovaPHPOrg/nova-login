@@ -35,7 +35,7 @@ window.pageOnLoad = function (loading) {
                         }
                         let html = '';
                         value.forEach(function (perm) {
-                            html += '<span class="badge  badge-primary">' + perm + '</span>';
+                            html += '<span class="badge badge-primary mr-1">' + $.escapeHtml(perm) + '</span>';
                         });
                         return html;
                     },

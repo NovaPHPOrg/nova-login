@@ -40,7 +40,7 @@
                 <label class="mdui-textfield">权限列表</label>
                 <div class="permission-group">
                     {foreach $permissions as $key => $label}
-                        <mdui-checkbox name="permissions" value="{$key}">{$label}</mdui-checkbox>
+                        <mdui-checkbox name="permissions[]" value="{$key}">{$label}</mdui-checkbox>
                     {/foreach}
                 </div>
             </div>
