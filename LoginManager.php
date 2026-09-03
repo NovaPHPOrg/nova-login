@@ -214,7 +214,7 @@ class LoginManager extends StaticRegister
         if (($_SERVER['HTTP_X_PJAX_PREFETCH'] ?? '') === 'true') {
             return;
         }
-        if ($uri !== "/login") {
+        if ($uri !== "/login" && !str_starts_with(parse_url($uri, PHP_URL_PATH) ?: $uri, '/login/')) {
             $this->setRedirectUri($uri);
         }
     }
@@ -254,6 +254,8 @@ class LoginManager extends StaticRegister
         $dao = RecordDao::getInstance();
 
         Logger::debug('Logout attempt', ['hasRecord' => $record !== null]);
+
+        $session->delete('__redirect_uri');
 
         try {
             if ($record instanceof RecordModel && $dao->id($record->id) !== null) {

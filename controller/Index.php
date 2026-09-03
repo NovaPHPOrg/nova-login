@@ -96,9 +96,9 @@ class Index extends Controller
     }
 
     /**
-     * 用户登出
+     * 用户登出：销毁会话后展示退出确认页；配置了跳转地址则提供可选入口
      *
-     * @return Response 返回登出重定向响应
+     * @return Response
      */
     public function logout(): Response
     {
@@ -107,7 +107,22 @@ class Index extends Controller
             Logger::info('User logout', ['userId' => $user->id, 'username' => $user->username]);
         }
         LoginManager::getInstance()->logout();
-        return Pjax::redirectTo(LoginConfig::getInstance()->logoutRedirect);
+
+        $config = LoginConfig::getInstance();
+        $redirect = trim($config->logoutRedirect);
+
+        $view = new ViewResponse();
+        $view->init(
+            '',
+            [
+                'title' => $config->systemName ?? '管理后台',
+                'logoutRedirect' => $redirect,
+            ],
+            '{',
+            '}',
+            ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . 'login' . DS . 'tpl' . DS
+        );
+        return $view->asTpl('logout');
     }
 
     /**

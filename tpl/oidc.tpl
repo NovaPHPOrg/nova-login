@@ -57,12 +57,11 @@
 
                 <div class="col-xs-12 col-md-6">
                     <mdui-text-field
-                        label="退出登录跳转"
+                        label="退出确认页跳转"
                         name="logoutRedirect"
                         type="text"
                         variant="outlined"
-                        required
-                        helper="退出登录后跳转的页面路径"
+                        helper="显示在退出确认页的可选跳转链接，留空则不显示；不会自动跳转"
                     ></mdui-text-field>
                 </div>
 

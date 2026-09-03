@@ -28,7 +28,7 @@ class LoginConfig extends ConfigObject
     public string $loginCallback = '/';
 
     /**
-     * @var string 退出登录后的跳转地址
+     * @var string 退出确认页上的可选跳转地址（留空则只提示关闭页面）
      */
     public string $logoutRedirect = '/';
 
