@@ -121,10 +121,11 @@ class Index extends Controller
         $state = $this->request->get('state', '');
         Logger::debug('SSO callback', ['code' => !empty($code), 'state' => $state]);
 
-        $user = SSOLoginManager::getInstance()->handleCallback($code, $state);
+        $sso = SSOLoginManager::getInstance();
+        $user = $sso->handleCallback($code, $state);
         if (!$user) {
-            Logger::warning('SSO callback failed');
-            return Pjax::responseError(403);
+            Logger::warning('SSO callback failed', ['reason' => $sso->lastError()]);
+            return Pjax::responseError(401, null, 'SSO 登录失败', $sso->lastError());
         }
 
         LoginManager::getInstance()->login($user);

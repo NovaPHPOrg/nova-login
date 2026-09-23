@@ -7,9 +7,6 @@ namespace nova\plugin\login\manager;
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
 use nova\framework\exception\AppExitException;
-
-use function nova\framework\uuid;
-
 use nova\plugin\avatar\Avatar;
 use nova\plugin\cookie\Session;
 use nova\plugin\http\HttpClient;
@@ -17,6 +14,7 @@ use nova\plugin\http\HttpException;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\LoginConfig;
+use function nova\framework\uuid;
 
 /**
  * SSO单点登录管理器
@@ -29,6 +27,12 @@ use nova\plugin\login\LoginConfig;
 class SSOLoginManager extends BaseLoginManager
 {
     private string $callback = "/login/callback";
+    private string $lastError = 'SSO 登录失败，请重新登录或联系管理员。';
+
+    public function lastError(): string
+    {
+        return $this->lastError;
+    }
 
     /**
      * 获取SSO登录URL
@@ -62,20 +66,29 @@ class SSOLoginManager extends BaseLoginManager
     {
         Logger::debug('SSO callback handler called', ['code' => !empty($code), 'state' => $state]);
 
+        if ($code === '' || $state === '') {
+            Logger::warning('SSO callback failed: missing code or state');
+            $this->lastError = 'SSO 回调参数不完整，请重新登录。';
+            return null;
+        }
+
         $storedState = Session::getInstance()->get('sso_state');
         if ($state !== $storedState) {
             Logger::warning('SSO callback failed: invalid state');
+            $this->lastError = 'SSO 状态校验失败，请重新登录。';
             return null;
         }
 
         Logger::debug('SSO state verified, fetching token');
 
-        $response = HttpClient::init(LoginConfig::getInstance()->ssoProviderUrl)
+        $config = LoginConfig::getInstance();
+        $response = HttpClient::init($config->ssoProviderUrl)
+            ->setHeader('Accept', 'application/json')
             ->post([
                 'grant_type' => 'authorization_code',
                 'code' => $code,
-                'client_id' => LoginConfig::getInstance()->ssoClientId,
-                'client_secret' => LoginConfig::getInstance()->ssoClientSecret,
+                'client_id' => trim($config->ssoClientId),
+                'client_secret' => trim($config->ssoClientSecret),
                 'redirect_uri' => $this->callback(),
             ], 'form')
             ->send('/token');
@@ -83,19 +96,28 @@ class SSOLoginManager extends BaseLoginManager
         Logger::debug('SSO token response received', ['httpCode' => $response->getHttpCode()]);
 
         $data = json_decode($response->getBody(), true);
-        if (!isset($data['access_token'])) {
-            Logger::warning('SSO callback failed: access_token not found', ['response' => $data]);
+        if (!is_array($data) || !isset($data['access_token'])) {
+            Logger::warning('SSO callback failed: access_token not found', [
+                'httpCode' => $response->getHttpCode(),
+                'error' => is_array($data) ? ($data['error'] ?? null) : null,
+            ]);
+            $this->lastError = $this->tokenErrorMessage(is_array($data) ? $data : null);
             return null;
         }
 
         Logger::debug('SSO access token received, fetching user info');
         $userInfo = $this->fetchUserInfo($data['access_token']);
-        if (!$userInfo || !isset($userInfo[LoginConfig::getInstance()->ssoUserField])) {
-            Logger::warning('SSO callback failed: user info not found');
+        $userField = $config->ssoUserField;
+        if (!$userInfo || !isset($userInfo[$userField]) || $userInfo[$userField] === '') {
+            Logger::warning('SSO callback failed: user info not found', [
+                'field' => $userField,
+                'keys' => is_array($userInfo) ? array_keys($userInfo) : null,
+            ]);
+            $this->lastError = '未能从 SSO 获取用户标识（字段 ' . $userField . '），请检查 OIDC 用户字段配置。';
             return null;
         }
 
-        Logger::debug('SSO user info received', ['username' => $userInfo[LoginConfig::getInstance()->ssoUserField]]);
+        Logger::debug('SSO user info received', ['username' => $userInfo[$userField]]);
         return $this->findOrCreateUser($userInfo);
     }
 
@@ -116,6 +138,7 @@ class SSOLoginManager extends BaseLoginManager
 
         $res = HttpClient::init()
             ->get()
+            ->setHeader('Accept', 'application/json')
             ->setHeader('Authorization', 'Bearer ' . $token)
             ->send($url);
 
@@ -160,6 +183,7 @@ class SSOLoginManager extends BaseLoginManager
 
         if (LoginConfig::getInstance()->ssoMustHasAccount) {
             Logger::warning('SSO user creation denied: must have account', ['username' => $username]);
+            $this->lastError = '当前账号未在系统中开通，请联系管理员添加用户后再登录。';
             return null;
         }
 
@@ -177,6 +201,27 @@ class SSOLoginManager extends BaseLoginManager
         ]);
 
         return $user;
+    }
+
+    /**
+     * @param array<string, mixed>|null $data
+     */
+    private function tokenErrorMessage(?array $data): string
+    {
+        $code = (string)($data['error'] ?? '');
+        $desc = (string)($data['error_description'] ?? '');
+
+        if (str_contains($desc, 'AADSTS7000215') || $code === 'invalid_client') {
+            return 'Azure 客户端密钥无效。请在 Entra 中重新创建 Client Secret，并把 Secret Value（不是 Secret ID）填到 OIDC 配置。';
+        }
+        if (str_contains($desc, 'AADSTS7000222')) {
+            return 'Azure 客户端密钥已过期，请重新生成 Secret Value 并更新 OIDC 配置。';
+        }
+        if ($code === 'invalid_grant') {
+            return '授权码无效或已过期，请重新登录。';
+        }
+
+        return '令牌交换失败，请重新登录或检查 OIDC 配置。';
     }
 
     /**
