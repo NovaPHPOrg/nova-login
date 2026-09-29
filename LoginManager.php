@@ -57,6 +57,12 @@ class LoginManager extends StaticRegister
 
         $this->get('/login/pwd/config', $this->map('pwd', 'config'));
         $this->post('/login/pwd/config', $this->map('pwd', 'save'));
+        $this->post('/login/pwd/save', $this->map('pwd', 'save'));
+
+        // 个人访问 Token
+        $this->get('/login/token/list', $this->map('token', 'list'));
+        $this->post('/login/token/create', $this->map('token', 'create'));
+        $this->post('/login/token/revoke', $this->map('token', 'revoke'));
 
         // OIDC认证登录
         $this->get('/login/oidc/config', $this->map('oidc', 'config'));
@@ -174,6 +180,10 @@ class LoginManager extends StaticRegister
      */
     public function checkLogin(): ?UserModel
     {
+        $tokenManager = new TokenManager();
+        if ($tokenManager->hasBearerToken()) {
+            return $tokenManager->authenticate();
+        }
         UserDao::getInstance()->initTable();
         $session = Session::getInstance();
         $requestUri = $_SERVER['REQUEST_URI'];

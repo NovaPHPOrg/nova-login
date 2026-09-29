@@ -8,6 +8,7 @@ use nova\framework\http\Response;
 use nova\framework\route\Controller;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\LoginManager;
+use nova\plugin\login\TokenManager;
 use nova\plugin\login\route\Permission;
 use nova\plugin\tpl\Pjax;
 
@@ -34,7 +35,15 @@ class BaseAPIController extends Controller
      */
     public function init(): ?Response
     {
-        $this->userModel = LoginManager::getInstance()->checkLogin();
+        $tokenManager = new TokenManager();
+        if ($tokenManager->hasBearerToken()) {
+            $this->userModel = $tokenManager->authenticate();
+            if ($this->userModel === null) {
+                return Response::asJson(['code' => 401, 'msg' => 'Token无效或已过期'], 401);
+            }
+        } else {
+            $this->userModel = LoginManager::getInstance()->checkLogin();
+        }
         if ($this->userModel === null) {
             $uri = LoginManager::getInstance()->redirectLogin();
             return Pjax::redirectTo($uri);

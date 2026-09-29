@@ -6,6 +6,7 @@ namespace nova\plugin\login\controller;
 
 use nova\framework\http\Response;
 use nova\plugin\login\db\Dao\RecordDao;
+use nova\plugin\login\db\Dao\PersonalTokenDao;
 use nova\plugin\login\db\Dao\UserDao;
 
 /**
@@ -79,6 +80,7 @@ class Pwd extends BaseAPIController
         // 密码修改后登出所有会话
         if ($post['new_password'] ?? null) {
             $this->logoutAllSessions($currentUser->id);
+            PersonalTokenDao::getInstance()->revokeByUserId($currentUser->id);
             return Response::asJson(['code' => 200, 'msg' => '密码修改成功，请重新登录'], 200);
         }
 
