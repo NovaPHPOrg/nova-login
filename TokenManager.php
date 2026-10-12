@@ -62,4 +62,3 @@ class TokenManager
         return $user;
     }
 }
-

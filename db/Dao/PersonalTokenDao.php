@@ -41,5 +41,3 @@ class PersonalTokenDao extends Dao
         ])->commit();
     }
 }
-
-

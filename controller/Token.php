@@ -72,5 +72,3 @@ class Token extends BaseAPIController
         return Response::asJson(['code' => 200, 'msg' => 'Token已删除']);
     }
 }
-
-

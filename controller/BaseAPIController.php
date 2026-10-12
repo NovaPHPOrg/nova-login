@@ -8,8 +8,8 @@ use nova\framework\http\Response;
 use nova\framework\route\Controller;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\LoginManager;
-use nova\plugin\login\TokenManager;
 use nova\plugin\login\route\Permission;
+use nova\plugin\login\TokenManager;
 use nova\plugin\tpl\Pjax;
 
 /**

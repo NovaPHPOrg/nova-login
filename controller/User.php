@@ -6,8 +6,8 @@ namespace nova\plugin\login\controller;
 
 use nova\framework\http\Response;
 use nova\plugin\cookie\Session;
-use nova\plugin\login\db\Dao\RecordDao;
 use nova\plugin\login\db\Dao\PersonalTokenDao;
+use nova\plugin\login\db\Dao\RecordDao;
 use nova\plugin\login\db\Dao\RoleDao;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\RecordModel;

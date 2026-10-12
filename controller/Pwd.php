@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace nova\plugin\login\controller;
 
 use nova\framework\http\Response;
-use nova\plugin\login\db\Dao\RecordDao;
 use nova\plugin\login\db\Dao\PersonalTokenDao;
+use nova\plugin\login\db\Dao\RecordDao;
 use nova\plugin\login\db\Dao\UserDao;
 
 /**
