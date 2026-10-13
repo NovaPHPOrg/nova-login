@@ -6,6 +6,7 @@ namespace nova\plugin\login\controller;
 
 use nova\framework\http\Response;
 use nova\plugin\cookie\Session;
+use nova\plugin\login\db\Dao\PersonalTokenDao;
 use nova\plugin\login\db\Dao\RecordDao;
 use nova\plugin\login\db\Dao\RoleDao;
 use nova\plugin\login\db\Dao\UserDao;
@@ -114,6 +115,7 @@ class User extends BaseAPIController
         UserDao::getInstance()->deleteById($id);
 
         RecordDao::getInstance()->deleteByUserId($id);
+        PersonalTokenDao::getInstance()->revokeByUserId($id);
 
         return Response::asJson(['code' => 200, 'msg' => '删除成功']);
     }

@@ -57,6 +57,12 @@ class LoginManager extends StaticRegister
 
         $this->get('/login/pwd/config', $this->map('pwd', 'config'));
         $this->post('/login/pwd/config', $this->map('pwd', 'save'));
+        $this->post('/login/pwd/save', $this->map('pwd', 'save'));
+
+        // 个人访问 Token
+        $this->get('/login/token/list', $this->map('token', 'list'));
+        $this->post('/login/token/create', $this->map('token', 'create'));
+        $this->post('/login/token/revoke', $this->map('token', 'revoke'));
 
         // OIDC认证登录
         $this->get('/login/oidc/config', $this->map('oidc', 'config'));
@@ -174,6 +180,10 @@ class LoginManager extends StaticRegister
      */
     public function checkLogin(): ?UserModel
     {
+        $tokenManager = new TokenManager();
+        if ($tokenManager->hasBearerToken()) {
+            return $tokenManager->authenticate();
+        }
         UserDao::getInstance()->initTable();
         $session = Session::getInstance();
         $requestUri = $_SERVER['REQUEST_URI'];
@@ -214,7 +224,7 @@ class LoginManager extends StaticRegister
         if (($_SERVER['HTTP_X_PJAX_PREFETCH'] ?? '') === 'true') {
             return;
         }
-        if ($uri !== "/login") {
+        if ($uri !== "/login" && !str_starts_with(parse_url($uri, PHP_URL_PATH) ?: $uri, '/login/')) {
             $this->setRedirectUri($uri);
         }
     }
@@ -254,6 +264,8 @@ class LoginManager extends StaticRegister
         $dao = RecordDao::getInstance();
 
         Logger::debug('Logout attempt', ['hasRecord' => $record !== null]);
+
+        $session->delete('__redirect_uri');
 
         try {
             if ($record instanceof RecordModel && $dao->id($record->id) !== null) {

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace nova\plugin\login\controller;
 
+use nova\framework\core\Context;
 use nova\framework\core\Logger;
 use nova\framework\http\Response;
 use nova\framework\route\Controller;
 use nova\plugin\captcha\Captcha;
+use nova\plugin\cookie\Session;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\LoginConfig;
 use nova\plugin\login\LoginManager;
@@ -96,9 +98,9 @@ class Index extends Controller
     }
 
     /**
-     * 用户登出
+     * 用户登出：销毁会话后展示退出确认页；配置了跳转地址则提供可选入口
      *
-     * @return Response 返回登出重定向响应
+     * @return Response
      */
     public function logout(): Response
     {
@@ -107,7 +109,22 @@ class Index extends Controller
             Logger::info('User logout', ['userId' => $user->id, 'username' => $user->username]);
         }
         LoginManager::getInstance()->logout();
-        return Pjax::redirectTo(LoginConfig::getInstance()->logoutRedirect);
+
+        $config = LoginConfig::getInstance();
+        $redirect = trim($config->logoutRedirect);
+
+        $view = new ViewResponse();
+        $view->init(
+            '',
+            [
+                'title' => $config->systemName ?? '管理后台',
+                'logoutRedirect' => $redirect,
+            ],
+            '{',
+            '}',
+            ROOT_PATH . DS . 'nova' . DS . 'plugin' . DS . 'login' . DS . 'tpl' . DS
+        );
+        return $view->asTpl('logout');
     }
 
     /**
@@ -121,8 +138,31 @@ class Index extends Controller
         $state = $this->request->get('state', '');
         Logger::debug('SSO callback', ['code' => !empty($code), 'state' => $state]);
 
+        // 复用缓存结果时不会经过 handleCallback，state 必须在这里与本会话绑定，否则拿到回调 URL 的任何人都能登录
+        if ($state === '' || $state !== Session::getInstance()->get('sso_state')) {
+            Logger::warning('SSO callback failed: invalid state');
+            return Pjax::responseError(403);
+        }
+
+        // 授权码只能兑换一次：重复回调（刷新、并发）排队等第一个请求的结果并复用，而不是拿旧 code 再去兑换
         $sso = SSOLoginManager::getInstance();
-        $user = $sso->handleCallback($code, $state);
+        $lock = fopen(RUNTIME_PATH . DS . 'sso_callback.lock', 'c');
+        flock($lock, LOCK_EX);
+        try {
+            $cache = Context::instance()->cache;
+            $key = 'sso_code/' . md5($code . $state);
+            $userId = $cache->get($key);
+            $user = $userId === null
+                ? $sso->handleCallback($code, $state)
+                : UserDao::getInstance()->id($userId);
+            if ($user) {
+                $cache->set($key, $user->id, 300);
+            }
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+
         if (!$user) {
             Logger::warning('SSO callback failed', ['reason' => $sso->lastError()]);
             return Pjax::responseError(401, null, 'SSO 登录失败', $sso->lastError());

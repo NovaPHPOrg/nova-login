@@ -38,6 +38,7 @@ class LoginTpl extends Instance implements AdminPageInterface
         $default = \nova\framework\route($model, $controller, "init");
         Route::getInstance()
             ->get('/login/pwd', $default)
+            ->get('/login/token', $default)
             ->get('/login/oidc', $default)
             ->get('/login/user', $default)
             ->get('/login/role', $default)
@@ -65,7 +66,7 @@ class LoginTpl extends Instance implements AdminPageInterface
 
         $action = trim($data[2]);
 
-        if (in_array($action, ['oidc','pwd','role','user','record'])) {
+        if (in_array($action, ['oidc','pwd','token','role','user','record'])) {
 
             $data = [];
 
@@ -108,6 +109,12 @@ class LoginTpl extends Instance implements AdminPageInterface
                     'title' => '账户安全',
                     'icon' => 'security',
                     'url' => '/login/pwd',
+                    'pjax' => true,
+                ],
+                [
+                    'title' => '个人Token',
+                    'icon' => 'key',
+                    'url' => '/login/token',
                     'pjax' => true,
                 ],
                 [
