@@ -7,6 +7,9 @@ namespace nova\plugin\login\manager;
 use nova\framework\core\Context;
 use nova\framework\core\Logger;
 use nova\framework\exception\AppExitException;
+
+use function nova\framework\uuid;
+
 use nova\plugin\avatar\Avatar;
 use nova\plugin\cookie\Session;
 use nova\plugin\http\HttpClient;
@@ -14,7 +17,6 @@ use nova\plugin\http\HttpException;
 use nova\plugin\login\db\Dao\UserDao;
 use nova\plugin\login\db\Model\UserModel;
 use nova\plugin\login\LoginConfig;
-use function nova\framework\uuid;
 
 /**
  * SSO单点登录管理器
