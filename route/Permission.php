@@ -170,7 +170,13 @@ class Permission extends Instance
         $result = [];
 
         foreach ($menus as $menu) {
-            // 处理分组菜单
+            // section 只是标题，不参与权限；交由后续可见项决定是否显得突兀，不在此剔除
+            if (($menu['type'] ?? '') === 'section') {
+                $result[] = $menu;
+                continue;
+            }
+
+            // 处理分组菜单（含 type=system）
             if (isset($menu['sub'])) {
                 $menu['sub'] = $this->filterMenu(
                     $menu['sub'],

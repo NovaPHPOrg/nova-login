@@ -30,9 +30,22 @@ final class AdminPage
         EventManager::addListener('admin.menu', function ($event, &$menu) use ($page) {
             $item = $page->menu();
             // 允许页面返回空菜单以退出菜单展示（仅注册路由/渲染）
-            if (!empty($item)) {
-                $menu[] = $item;
+            if (empty($item)) {
+                return;
             }
+            // 插件统一挂进「系统」collapse；没有则创建（禁止空 sub 占位，避免被当成叶子渲染炸掉）
+            foreach ($menu as $i => $node) {
+                if (($node['type'] ?? '') === 'system') {
+                    $menu[$i]['sub'][] = $item;
+                    return;
+                }
+            }
+            $menu[] = [
+                'type' => 'system',
+                'title' => '系统',
+                'icon' => 'settings',
+                'sub' => [$item],
+            ];
         });
 
         EventManager::addListener('admin.init', function ($event, &$data) use ($page) {

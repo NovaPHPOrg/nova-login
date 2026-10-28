@@ -29,6 +29,8 @@ interface AdminPageInterface
     /**
      * 返回后台菜单项
      *
+     * 宿主菜单若含 type=system 节点，该项会挂入其 sub；否则追加到顶栏。
+     *
      * @return array
      */
     public function menu(): array;
