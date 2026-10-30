@@ -55,6 +55,8 @@ abstract class BaseViewController extends Controller
         // PJAX 时不套 layout，只输出片段。
         $this->viewResponse->init($this->request->isPjax() ? '' : 'layout', [
             'title' => Application::SYSTEM_NAME,
+            'brandName' => Application::SYSTEM_NAME,
+            'brandLogo' => '/static/icons/android-chrome-192x192.png',
             'user' => $this->userModel,
             'menuConfig' => $this->getTotalMenu(),
             'userDisplayName' => $this->userModel->display_name !== ''
